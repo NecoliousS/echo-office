@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echo Office</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -241,11 +242,29 @@
             transition: opacity 0.5s;
         }
 
+        #loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0a0a12;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #a855f7;
+            transition: opacity 0.5s;
+        }
+
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
 </head>
 <body>
+
+    <div id="loader">
+        <div style="font-size:1.5rem; font-weight:700; margin-bottom:10px;">◆ ECHO</div>
+        <div style="font-size:0.85rem; color:#666;">Loading Office...</div>
+    </div>
 
     <div class="key-bar">
         <span class="brand">◆ ECHO</span>
@@ -296,6 +315,23 @@
 
     <script>
         // ==================== CONFIG ====================
+        const MODEL_URL = 'office.glb';
+        const PLACEMENT_MODE = false; // SET TO TRUE to click and get desk coordinates in console
+        
+        // Adjust these to match actual desk positions in the model
+        // Enable PLACEMENT_MODE, click where you want each agent, copy coordinates here
+        const DESK_POSITIONS = [
+            {x: -2.5, y: 0, z: -1.5},   // 0 Director
+            {x: 0,    y: 0, z: -1.5},   // 1 Scribe
+            {x: 2.5,  y: 0, z: -1.5},   // 2 Lens
+            {x: -2.5, y: 0, z: 1.5},    // 3 Voice
+            {x: 0,    y: 0, z: 1.5},    // 4 Frame
+            {x: 2.5,  y: 0, z: 1.5},    // 5 Post
+            {x: -1.5, y: 0, z: 3.5},    // 6 Dealer
+            {x: 1.5,  y: 0, z: 3.5},    // 7 Hustle
+            {x: 0,    y: 0, z: 0}       // 8 Clock
+        ];
+
         const AGENTS = [
             { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, angle: 0, radius: 3.5, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
             { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, angle: Math.PI * 2 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
@@ -308,23 +344,10 @@
             { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, angle: Math.PI * 16 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
         ];
 
-        const POSTERS = [
-            'naoya-1.jpeg', 'naoya-2.jpeg',
-            'manga-loki-1.jpeg', 'manga-loki-2.jpeg',
-            'phone-painting-1.jpeg', 'phone-painting-2.jpeg', 'phone-painting-3.jpeg',
-            'gojo-painting-1.jpeg', 'gojo-painting-2.jpeg',
-            'marvel-rivals-loki-1.jpeg',
-            'marvel-rivals-painting-1.jpeg', 'marvel-rivals-painting-2.jpeg', 'marvel-rivals-painting-3.jpeg',
-            'marvel-rivals-painting-4.jpeg', 'marvel-rivals-painting-5.jpeg', 'marvel-rivals-painting-6.jpeg',
-            'marvel-rivals-painting-7.jpeg', 'marvel-rivals-painting-8.jpeg',
-            'law-picture-1.jpeg', 'law-picture-2.jpeg', 'law-picture-3.jpeg',
-            'kaido-painting-1.jpeg',
-            'marvel-rivals-painting-adam.jpeg'
-        ];
-
         // ==================== STATE ====================
         let scene, camera, renderer;
         let agents = [];
+        let officeModel = null;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let activeAgentIndex = null;
@@ -394,7 +417,7 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a12);
-            scene.fog = new THREE.FogExp2(0x0a0a12, 0.035);
+            scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
 
             camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
             updateCamera();
@@ -403,40 +426,71 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
 
-            // Lights
-            const ambient = new THREE.AmbientLight(0x2a1a4e, 0.35);
+            // Lights — brighter for realistic office model
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambient);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.45);
-            dirLight.position.set(4, 10, 6);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(5, 12, 8);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.set(2048, 2048);
             scene.add(dirLight);
 
-            // Circular Office Room
-            buildCircularOffice();
+            const fillLight = new THREE.DirectionalLight(0xa855f7, 0.15);
+            fillLight.position.set(-5, 4, -5);
+            scene.add(fillLight);
 
-            // Desks in circle
-            AGENTS.forEach((agent, i) => {
-                const x = Math.cos(agent.angle) * agent.radius;
-                const z = Math.sin(agent.angle) * agent.radius;
-                const desk = buildDesk(agent.color);
-                desk.position.set(x, 0, z);
-                desk.lookAt(0, 0, 0);
-                scene.add(desk);
+            // Load Office Model
+            const loader = new THREE.GLTFLoader();
+            loader.load(MODEL_URL, (gltf) => {
+                officeModel = gltf.scene;
+                
+                // Auto-detect and hide roof / duplicate exterior building
+                filterModel(officeModel);
+                
+                // Optional: scale or center if needed
+                // officeModel.scale.set(1,1,1);
+                
+                scene.add(officeModel);
+                
+                // Log all mesh names for debugging
+                console.log('=== MODEL MESHES ===');
+                officeModel.traverse((child) => {
+                    if (child.isMesh) console.log(child.name);
+                });
+                console.log('====================');
 
-                const light = new THREE.PointLight(agent.color, 0.35, 3);
-                light.position.set(x, 1.5, z);
-                scene.add(light);
-            });
+                // Create agents at desk positions
+                AGENTS.forEach((config, i) => {
+                    const robot = new Robot(i, config);
+                    agents.push(robot);
+                    scene.add(robot.mesh);
+                    
+                    // Snap to desk position
+                    if (DESK_POSITIONS[i]) {
+                        robot.mesh.position.set(
+                            DESK_POSITIONS[i].x,
+                            DESK_POSITIONS[i].y,
+                            DESK_POSITIONS[i].z
+                        );
+                    }
+                });
 
-            // Robots
-            AGENTS.forEach((config, i) => {
-                const robot = new Robot(i, config);
-                agents.push(robot);
-                scene.add(robot.mesh);
+                // Hide loader
+                const loaderEl = document.getElementById('loader');
+                loaderEl.style.opacity = '0';
+                setTimeout(() => loaderEl.style.display = 'none', 500);
+                
+            }, (xhr) => {
+                const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                console.log(pct + '% loaded');
+            }, (error) => {
+                console.error('Error loading model:', error);
+                document.getElementById('loader').innerHTML = 
+                    '<div style="color:#ff4444; text-align:center;">Failed to load office.glb<br><span style="color:#666; font-size:0.8rem;">Check filename and path</span></div>';
             });
 
             // Events
@@ -459,273 +513,50 @@
             camera.lookAt(cameraTarget);
         }
 
-        // ==================== CIRCULAR OFFICE ====================
-        function buildCircularOffice() {
-            const wallColor = 0xeae8e1;
-            const floorColor = 0x8B5A2B;
-
-            // Circular floor — WOOD
-            const floor = new THREE.Mesh(
-                new THREE.CircleGeometry(6, 64),
-                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.75, metalness: 0.05 })
-            );
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            scene.add(floor);
-
-            // Outer ring floor — slightly darker wood
-            const outerFloor = new THREE.Mesh(
-                new THREE.RingGeometry(6, 8, 64),
-                new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8, metalness: 0.05 })
-            );
-            outerFloor.rotation.x = -Math.PI / 2;
-            outerFloor.position.y = -0.005;
-            scene.add(outerFloor);
-
-            // Circular wall — WHITE TEXTURED
-            const wallGeo = new THREE.CylinderGeometry(7.5, 7.5, 5, 64, 1, true);
-            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92, side: THREE.BackSide });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.y = 2.5;
-            wall.receiveShadow = true;
-            scene.add(wall);
-
-            // Wall trim (glowing ring at top) — adjusted to purple so it pops on white
-            const trimGeo = new THREE.TorusGeometry(7.5, 0.03, 8, 64);
-            const trimMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.5 });
-            const trim = new THREE.Mesh(trimGeo, trimMat);
-            trim.rotation.x = Math.PI / 2;
-            trim.position.y = 4.8;
-            scene.add(trim);
-
-            // Ceiling (partial — like a dome cut)
-            const ceilingGeo = new THREE.SphereGeometry(7.5, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.35);
-            const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf0eee9, roughness: 1, side: THREE.BackSide });
-            const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
-            ceiling.position.y = 0;
-            scene.add(ceiling);
-
-            // Center table (meeting area)
-            const tableTop = new THREE.Mesh(
-                new THREE.CylinderGeometry(1, 1, 0.06, 32),
-                new THREE.MeshStandardMaterial({ color: 0x151520, roughness: 0.3, metalness: 0.7 })
-            );
-            tableTop.position.y = 0.7;
-            tableTop.castShadow = true;
-            scene.add(tableTop);
-
-            const tableGlow = new THREE.Mesh(
-                new THREE.TorusGeometry(1, 0.015, 8, 32),
-                new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.4 })
-            );
-            tableGlow.rotation.x = Math.PI / 2;
-            tableGlow.position.y = 0.67;
-            scene.add(tableGlow);
-
-            // Center light
-            const centerLight = new THREE.PointLight(0x7c3aed, 0.4, 6);
-            centerLight.position.set(0, 3, 0);
-            scene.add(centerLight);
-
-            // Hallway entrance
-            buildHallway();
-
-            // Logo on back wall
-            buildLogo();
-
-            // Posters scattered randomly
-            buildPosters();
-        }
-
-        function buildHallway() {
-            const wallColor = 0xeae8e1;
-
-            // Hallway floor — wood to match
-            const hallFloor = new THREE.Mesh(
-                new THREE.PlaneGeometry(3, 5),
-                new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8, metalness: 0.05 })
-            );
-            hallFloor.rotation.x = -Math.PI / 2;
-            hallFloor.position.set(0, 0.01, 9.5);
-            scene.add(hallFloor);
-
-            // Hall walls — white textured
-            const hallLeft = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92 })
-            );
-            hallLeft.position.set(-1.5, 2.25, 9.5);
-            hallLeft.rotation.y = Math.PI / 2;
-            scene.add(hallLeft);
-
-            const hallRight = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92 })
-            );
-            hallRight.position.set(1.5, 2.25, 9.5);
-            hallRight.rotation.y = -Math.PI / 2;
-            scene.add(hallRight);
-
-            // Door frame
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0x2a2a45, metalness: 0.6 });
-            const topFrame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 0.15), frameMat);
-            topFrame.position.set(0, 4, 7.5);
-            scene.add(topFrame);
-
-            const leftFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4, 0.15), frameMat);
-            leftFrame.position.set(-1.55, 2, 7.5);
-            scene.add(leftFrame);
-
-            const rightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4, 0.15), frameMat);
-            rightFrame.position.set(1.55, 2, 7.5);
-            scene.add(rightFrame);
-        }
-
-        function buildLogo() {
-            const loader = new THREE.TextureLoader();
-            loader.load('company-logo.png',
-                (tex) => {
-                    const aspect = tex.image.width / tex.image.height;
-                    const w = 2.2;
-                    const h = w / aspect;
-
-                    // Backing
-                    const plate = new THREE.Mesh(
-                        new THREE.BoxGeometry(w + 0.15, h + 0.15, 0.06),
-                        new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.3, metalness: 0.8 })
-                    );
-                    plate.position.set(0, 3.5, -7.4);
-                    scene.add(plate);
-
-                    // Logo
-                    const logo = new THREE.Mesh(
-                        new THREE.PlaneGeometry(w, h),
-                        new THREE.MeshStandardMaterial({
-                            map: tex,
-                            transparent: true,
-                            roughness: 0.2,
-                            metalness: 0.5,
-                            emissive: 0x7c3aed,
-                            emissiveIntensity: 0.15
-                        })
-                    );
-                    logo.position.set(0, 3.5, -7.34);
-                    scene.add(logo);
-
-                    // Glow
-                    const glow = new THREE.PointLight(0x7c3aed, 0.25, 4);
-                    glow.position.set(0, 3.5, -7);
-                    scene.add(glow);
-                },
-                undefined,
-                () => console.log('Logo not found')
-            );
-        }
-
-        function buildPosters() {
-            const loader = new THREE.TextureLoader();
-            const placedPositions = [];
-
-            POSTERS.forEach((poster, i) => {
-                loader.load(poster,
-                    (tex) => {
-                        const aspect = tex.image.width / tex.image.height;
-                        const frameW = 0.7 + Math.random() * 0.4;
-                        const frameH = frameW / aspect;
-
-                        // Random position on circular wall
-                        const angle = Math.random() * Math.PI * 2;
-                        const wallR = 7.45;
-                        const x = Math.cos(angle) * wallR;
-                        const z = Math.sin(angle) * wallR;
-                        const y = 1.5 + Math.random() * 2;
-
-                        // Check not too close to others
-                        let tooClose = false;
-                        for (let p of placedPositions) {
-                            const dx = p.x - x, dy = p.y - y, dz = p.z - z;
-                            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.2) tooClose = true;
-                        }
-                        if (tooClose) return;
-
-                        placedPositions.push({ x, y, z });
-
-                        // Frame
-                        const frame = new THREE.Mesh(
-                            new THREE.BoxGeometry(frameW + 0.06, frameH + 0.06, 0.04),
-                            new THREE.MeshStandardMaterial({ color: 0x1f1f35, roughness: 0.4, metalness: 0.5 })
-                        );
-                        frame.position.set(x, y, z);
-                        frame.lookAt(0, y, 0);
-                        scene.add(frame);
-
-                        // Picture
-                        const pic = new THREE.Mesh(
-                            new THREE.PlaneGeometry(frameW, frameH),
-                            new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 })
-                        );
-                        const offset = 0.03;
-                        pic.position.set(
-                            x + Math.cos(angle) * offset,
-                            y,
-                            z + Math.sin(angle) * offset
-                        );
-                        pic.lookAt(0, y, 0);
-                        scene.add(pic);
-
-                        // Small light
-                        const light = new THREE.PointLight(0xffffff, 0.1, 2);
-                        light.position.set(
-                            x + Math.cos(angle) * 0.5,
-                            y + 0.5,
-                            z + Math.sin(angle) * 0.5
-                        );
-                        scene.add(light);
-                    },
-                    undefined,
-                    () => console.log(`Poster ${poster} not found`)
-                );
-            });
-        }
-
-        function buildDesk(colorHex) {
-            const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: 0x151520, roughness: 0.4, metalness: 0.7 });
-            const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.2 });
-
-            // Desktop
-            const top = new THREE.Mesh(new THREE.BoxGeometry(1, 0.04, 0.55), mat);
-            top.position.y = 0.7;
-            top.castShadow = true;
-            group.add(top);
-
-            // Glow edge
-            const edge = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.012, 0.57), glowMat);
-            edge.position.y = 0.68;
-            group.add(edge);
-
-            // Legs
-            const legGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.7);
-            [[-0.4, -0.2], [0.4, -0.2], [-0.4, 0.2], [0.4, 0.2]].forEach(([x, z]) => {
-                const leg = new THREE.Mesh(legGeo, mat);
-                leg.position.set(x, 0.35, z);
-                group.add(leg);
+        // ==================== MODEL FILTERING ====================
+        function filterModel(model) {
+            const roofKeywords = ['roof', 'ceiling', 'shell', 'exterior', 'outside', 'cover', 'top', 'shingle', 'awning', 'dome', 'canopy'];
+            
+            // Find top-level building-like groups and check if they contain roof parts
+            const candidates = [];
+            model.children.forEach((child) => {
+                if (child.isGroup || child.isObject3D) {
+                    const name = child.name.toLowerCase();
+                    if (name.includes('office') || name.includes('building') || name.includes('room') || 
+                        name.includes('house') || name.includes('structure') || name.includes('env') ||
+                        name.includes('model') || name.includes('scene')) {
+                        let hasRoof = false;
+                        child.traverse((c) => {
+                            if (c.isMesh) {
+                                const n = c.name.toLowerCase();
+                                if (roofKeywords.some(k => n.includes(k))) hasRoof = true;
+                            }
+                        });
+                        candidates.push({ child, hasRoof, name });
+                    }
+                }
             });
 
-            // Monitor
-            const screen = new THREE.Mesh(
-                new THREE.BoxGeometry(0.32, 0.22, 0.01),
-                new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colorHex, emissiveIntensity: 0.35 })
-            );
-            screen.position.set(0, 0.92, -0.1);
-            screen.rotation.x = -0.06;
-            group.add(screen);
+            // If 2+ building groups found, hide the ones with roof (exterior clones)
+            if (candidates.length >= 2) {
+                candidates.forEach((c) => {
+                    if (c.hasRoof) {
+                        c.child.visible = false;
+                        console.log('Hidden roof building:', c.name);
+                    }
+                });
+            }
 
-            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.16), mat);
-            stand.position.set(0, 0.8, -0.1);
-            group.add(stand);
-
-            return group;
+            // Also individually hide any mesh with roof/ceiling in its name
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    const name = child.name.toLowerCase();
+                    if (roofKeywords.some(k => name.includes(k))) {
+                        child.visible = false;
+                        console.log('Hidden roof mesh:', child.name);
+                    }
+                }
+            });
         }
 
         // ==================== ROBOT (Office Worker Style) ====================
@@ -740,6 +571,7 @@
                 this.hoverOffset = Math.random() * Math.PI * 2;
 
                 this.mesh = this.buildWorker(config);
+                // Fallback position (overridden by init)
                 const startAngle = config.angle + (Math.random() - 0.5) * 0.3;
                 const startR = config.radius + (Math.random() - 0.5) * 0.8;
                 this.mesh.position.set(
@@ -923,16 +755,23 @@
 
             pickTarget(allAgents) {
                 const r = Math.random();
-                if (r < 0.5) {
-                    const desk = AGENTS[Math.floor(Math.random() * AGENTS.length)];
-                    const x = Math.cos(desk.angle) * desk.radius;
-                    const z = Math.sin(desk.angle) * desk.radius;
-                    this.targetPos.set(x + (Math.random()-0.5)*1.5, 0, z + (Math.random()-0.5)*1.5);
-                } else if (r < 0.8) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const rad = 1 + Math.random() * 4;
-                    this.targetPos.set(Math.cos(angle) * rad, 0, Math.sin(angle) * rad);
+                if (r < 0.6) {
+                    // Walk to a random desk
+                    const desk = DESK_POSITIONS[Math.floor(Math.random() * DESK_POSITIONS.length)];
+                    this.targetPos.set(
+                        desk.x + (Math.random()-0.5)*1.0,
+                        desk.y,
+                        desk.z + (Math.random()-0.5)*1.0
+                    );
+                } else if (r < 0.9) {
+                    // Wander in office bounds
+                    this.targetPos.set(
+                        (Math.random() - 0.5) * 8,
+                        0,
+                        (Math.random() - 0.5) * 8
+                    );
                 } else {
+                    // Visit another agent
                     const other = allAgents[Math.floor(Math.random() * allAgents.length)];
                     if (other !== this) {
                         this.targetPos.copy(other.mesh.position);
@@ -954,14 +793,10 @@
 
             animateIdle(time) {
                 this.mesh.position.y = 0;
-                // Breathing
                 this.mesh.children[0].scale.y = 1 + Math.sin(time * 2 + this.index) * 0.015;
-                // Arms sway
                 this.leftArm.rotation.z = 0.15 + Math.sin(time * 1.2 + this.index) * 0.03;
                 this.rightArm.rotation.z = -0.15 - Math.sin(time * 1.2 + this.index) * 0.03;
-                // Head look
                 this.mesh.children[2].rotation.y = Math.sin(time * 0.4 + this.index) * 0.2;
-                // Reset legs
                 this.leftLeg.rotation.x = 0;
                 this.rightLeg.rotation.x = 0;
             }
@@ -969,28 +804,21 @@
             animateWalk(time) {
                 const speed = 6;
                 const amp = 0.4;
-                // Legs walk
                 this.leftLeg.rotation.x = Math.sin(time * speed + this.index * 2) * amp;
                 this.rightLeg.rotation.x = Math.sin(time * speed + this.index * 2 + Math.PI) * amp;
-                // Arms swing opposite
                 this.leftArm.rotation.x = Math.sin(time * speed + this.index * 2 + Math.PI) * 0.25;
                 this.rightArm.rotation.x = Math.sin(time * speed + this.index * 2) * 0.25;
-                // Body bob
                 this.mesh.position.y = Math.abs(Math.sin(time * speed * 2 + this.index)) * 0.02;
-                // Head steady
                 this.mesh.children[2].rotation.x = 0.05;
             }
 
             animateInteract(time) {
                 if (!this.interactPartner) return;
-                // Excited gesture
                 this.leftArm.rotation.z = 0.3 + Math.sin(time * 5) * 0.2;
                 this.rightArm.rotation.z = -0.3 - Math.sin(time * 5 + 1) * 0.2;
                 this.leftArm.rotation.x = -0.4 + Math.sin(time * 3) * 0.15;
                 this.rightArm.rotation.x = -0.4 + Math.sin(time * 3 + 1) * 0.15;
-                // Head nod
                 this.mesh.children[2].rotation.x = Math.sin(time * 4) * 0.08;
-                // Lean in
                 const partnerDir = new THREE.Vector3().subVectors(this.interactPartner.mesh.position, this.mesh.position);
                 this.mesh.rotation.x = partnerDir.z * 0.02;
             }
@@ -1044,6 +872,25 @@
 
         function onClick(e) {
             if (isDragging) return;
+
+            // PLACEMENT MODE: click model to get coordinates
+            if (PLACEMENT_MODE && officeModel) {
+                raycaster.setFromCamera(mouse, camera);
+                const modelMeshes = [];
+                officeModel.traverse(c => { if (c.isMesh && c.visible) modelMeshes.push(c); });
+                const intersects = raycaster.intersectObjects(modelMeshes, false);
+                if (intersects.length > 0) {
+                    const p = intersects[0].point;
+                    const coord = `{x: ${p.x.toFixed(2)}, y: ${p.y.toFixed(2)}, z: ${p.z.toFixed(2)}}`;
+                    console.log('DESK_POSITION:', coord);
+                    const hint = document.getElementById('hint');
+                    hint.textContent = `Copied: ${coord}`;
+                    hint.style.opacity = '1';
+                    setTimeout(() => { if (!PLACEMENT_MODE) hint.style.opacity = '0'; }, 4000);
+                    return;
+                }
+            }
+
             raycaster.setFromCamera(mouse, camera);
             for (let agent of agents) {
                 const intersects = raycaster.intersectObject(agent.mesh, true);
@@ -1150,11 +997,9 @@
             recent.forEach(m => context += `${m.role}: ${m.text}\n`);
             context += `user: ${userMessage}`;
 
-            // If Clock is asked to update tasks, handle it
             if (config.name === 'Clock' && (userMessage.toLowerCase().includes('schedule') || userMessage.toLowerCase().includes('task') || userMessage.toLowerCase().includes('remind'))) {
-                // Clock will acknowledge in its response, but we also update UI if user explicitly says "add task" or "remove task"
                 if (userMessage.toLowerCase().includes('add task') || userMessage.toLowerCase().includes('new task')) {
-                    // Extract task info from message or let Clock handle it in response
+                    // Let Clock handle in response
                 }
             }
 
