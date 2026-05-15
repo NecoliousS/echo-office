@@ -461,38 +461,38 @@
 
         // ==================== CIRCULAR OFFICE ====================
         function buildCircularOffice() {
-            const wallColor = 0x1a0a2e;
-            const floorColor = 0x0d0d18;
+            const wallColor = 0xeae8e1;
+            const floorColor = 0x8B5A2B;
 
-            // Circular floor
+            // Circular floor — WOOD
             const floor = new THREE.Mesh(
                 new THREE.CircleGeometry(6, 64),
-                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.9 })
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.75, metalness: 0.05 })
             );
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // Outer ring floor (slightly darker)
+            // Outer ring floor — slightly darker wood
             const outerFloor = new THREE.Mesh(
                 new THREE.RingGeometry(6, 8, 64),
-                new THREE.MeshStandardMaterial({ color: 0x08080f, roughness: 0.95 })
+                new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8, metalness: 0.05 })
             );
             outerFloor.rotation.x = -Math.PI / 2;
             outerFloor.position.y = -0.005;
             scene.add(outerFloor);
 
-            // Circular wall (curved)
+            // Circular wall — WHITE TEXTURED
             const wallGeo = new THREE.CylinderGeometry(7.5, 7.5, 5, 64, 1, true);
-            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.95, side: THREE.BackSide });
+            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92, side: THREE.BackSide });
             const wall = new THREE.Mesh(wallGeo, wallMat);
             wall.position.y = 2.5;
             wall.receiveShadow = true;
             scene.add(wall);
 
-            // Wall trim (glowing ring at top)
+            // Wall trim (glowing ring at top) — adjusted to purple so it pops on white
             const trimGeo = new THREE.TorusGeometry(7.5, 0.03, 8, 64);
-            const trimMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.3 });
+            const trimMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.5 });
             const trim = new THREE.Mesh(trimGeo, trimMat);
             trim.rotation.x = Math.PI / 2;
             trim.position.y = 4.8;
@@ -500,7 +500,7 @@
 
             // Ceiling (partial — like a dome cut)
             const ceilingGeo = new THREE.SphereGeometry(7.5, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.35);
-            const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 1, side: THREE.BackSide });
+            const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf0eee9, roughness: 1, side: THREE.BackSide });
             const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
             ceiling.position.y = 0;
             scene.add(ceiling);
@@ -538,21 +538,21 @@
         }
 
         function buildHallway() {
-            const wallColor = 0x1a0a2e;
+            const wallColor = 0xeae8e1;
 
-            // Hallway floor
+            // Hallway floor — wood to match
             const hallFloor = new THREE.Mesh(
                 new THREE.PlaneGeometry(3, 5),
-                new THREE.MeshStandardMaterial({ color: 0x08080f, roughness: 0.95 })
+                new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8, metalness: 0.05 })
             );
             hallFloor.rotation.x = -Math.PI / 2;
             hallFloor.position.set(0, 0.01, 9.5);
             scene.add(hallFloor);
 
-            // Hall walls
+            // Hall walls — white textured
             const hallLeft = new THREE.Mesh(
                 new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor })
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92 })
             );
             hallLeft.position.set(-1.5, 2.25, 9.5);
             hallLeft.rotation.y = Math.PI / 2;
@@ -560,7 +560,7 @@
 
             const hallRight = new THREE.Mesh(
                 new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor })
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92 })
             );
             hallRight.position.set(1.5, 2.25, 9.5);
             hallRight.rotation.y = -Math.PI / 2;
