@@ -69,7 +69,6 @@
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
-            transition: all 0.2s;
         }
         .zoom-btn:hover {
             background: rgba(124,58,237,0.2);
@@ -244,6 +243,7 @@
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
+<base target="_blank">
 </head>
 <body>
 
@@ -295,17 +295,18 @@
     <div class="hint" id="hint">Drag to look around • Click agent to chat</div>
 
     <script>
+
         // ==================== CONFIG ====================
         const AGENTS = [
-            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, angle: 0, radius: 3.5, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
-            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, angle: Math.PI * 2 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
-            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, angle: Math.PI * 4 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
-            { name: "Voice", role: "Audio & TTS", color: 0x10b981, angle: Math.PI * 6 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
-            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, angle: Math.PI * 8 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
-            { name: "Post", role: "Captions & Upload", color: 0xec4899, angle: Math.PI * 10 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
-            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, angle: Math.PI * 12 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
-            { name: "Hustle", role: "Website Selling", color: 0xeab308, angle: Math.PI * 14 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
-            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, angle: Math.PI * 16 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
+            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, deskPos: { x: 0, z: -4 }, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
+            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, deskPos: { x: -3.8, z: -1.8 }, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
+            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, deskPos: { x: 3.8, z: -1.8 }, api: "gemini", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
+            { name: "Voice", role: "Audio & TTS", color: 0x10b981, deskPos: { x: -4.5, z: 1.5 }, api: "groq", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
+            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, deskPos: { x: 4.5, z: 1.5 }, api: "gemini", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
+            { name: "Post", role: "Captions & Upload", color: 0xec4899, deskPos: { x: 0, z: 4.5 }, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
+            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, deskPos: { x: -5.5, z: 0 }, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
+            { name: "Hustle", role: "Website Selling", color: 0xeab308, deskPos: { x: 5.5, z: 0 }, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
+            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, deskPos: { x: 0, z: 0 }, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
         ];
 
         const POSTERS = [
@@ -322,16 +323,26 @@
             'marvel-rivals-painting-adam.jpeg'
         ];
 
+        // Room boundaries for collision detection
+        const ROOMS = {
+            circular: { center: { x: 0, z: 0 }, radius: 6.5, type: 'circle' },
+            hallway: { x1: -2, x2: 2, z1: 6.5, z2: 12, type: 'rect' },
+            ceoRoom: { x1: 2, x2: 10, z1: 6.5, z2: 14, type: 'rect' },
+            reception: { x1: -10, x2: -2, z1: 6.5, z2: 14, type: 'rect' }
+        };
+
         // ==================== STATE ====================
         let scene, camera, renderer;
         let agents = [];
+        let desks = [];
+        let walls = [];
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let activeAgentIndex = null;
         let chatHistory = {};
         let isDragging = false;
         let cameraAngle = { theta: 0, phi: Math.PI / 2.5 };
-        let cameraRadius = 10;
+        let cameraRadius = 12;
         let cameraTarget = new THREE.Vector3(0, 1.5, 0);
 
         document.getElementById('geminiKey').value = localStorage.getItem('geminiKey') || '';
@@ -358,12 +369,12 @@
         }
 
         function zoomOut() {
-            cameraRadius = Math.min(18, cameraRadius + 1);
+            cameraRadius = Math.min(20, cameraRadius + 1);
             updateCamera();
         }
 
         // ==================== TASK PANEL ====================
-        let userTasks = [];
+        let userTasks = JSON.parse(localStorage.getItem('echoTasks') || '[]');
         const defaultTasks = [
             { task: "Ring Cam short", time: "8:00 PM", color: "#7c3aed" },
             { task: "iMessage Horror", time: "12:00 AM", color: "#3b82f6" },
@@ -388,13 +399,25 @@
         }
         updateTasks();
 
-        // ==================== THREE.JS ====================
+        function addTask(task, time, color) {
+            userTasks.push({ task, time, color });
+            localStorage.setItem('echoTasks', JSON.stringify(userTasks));
+            updateTasks();
+        }
+
+        function removeTask(taskName) {
+            userTasks = userTasks.filter(t => !t.task.includes(taskName));
+            localStorage.setItem('echoTasks', JSON.stringify(userTasks));
+            updateTasks();
+        }
+
+        // ==================== THREE.JS SETUP ====================
         function init() {
             const container = document.getElementById('canvas-container');
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a12);
-            scene.fog = new THREE.FogExp2(0x0a0a12, 0.035);
+            scene.background = new THREE.Color(0x08080f);
+            scene.fog = new THREE.FogExp2(0x08080f, 0.025);
 
             camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
             updateCamera();
@@ -406,37 +429,39 @@
             container.appendChild(renderer.domElement);
 
             // Lights
-            const ambient = new THREE.AmbientLight(0x2a1a4e, 0.35);
+            const ambient = new THREE.AmbientLight(0x2a1a4e, 0.3);
             scene.add(ambient);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.45);
-            dirLight.position.set(4, 10, 6);
+            const dirLight = new THREE.DirectionalLight(0xffeedd, 0.4);
+            dirLight.position.set(5, 12, 8);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.set(2048, 2048);
             scene.add(dirLight);
 
-            // Circular Office Room
+            // Build all rooms
             buildCircularOffice();
+            buildHallway();
+            buildCEORoom();
+            buildReception();
 
-            // Desks in circle
+            // Desks
             AGENTS.forEach((agent, i) => {
-                const x = Math.cos(agent.angle) * agent.radius;
-                const z = Math.sin(agent.angle) * agent.radius;
                 const desk = buildDesk(agent.color);
-                desk.position.set(x, 0, z);
+                desk.position.set(agent.deskPos.x, 0, agent.deskPos.z);
                 desk.lookAt(0, 0, 0);
                 scene.add(desk);
+                desks.push({ mesh: desk, pos: agent.deskPos, radius: 1.2 });
 
-                const light = new THREE.PointLight(agent.color, 0.35, 3);
-                light.position.set(x, 1.5, z);
+                const light = new THREE.PointLight(agent.color, 0.3, 4);
+                light.position.set(agent.deskPos.x, 1.5, agent.deskPos.z);
                 scene.add(light);
             });
 
-            // Robots
+            // Office workers
             AGENTS.forEach((config, i) => {
-                const robot = new Robot(i, config);
-                agents.push(robot);
-                scene.add(robot.mesh);
+                const worker = new OfficeWorker(i, config);
+                agents.push(worker);
+                scene.add(worker.mesh);
             });
 
             // Events
@@ -459,126 +484,471 @@
             camera.lookAt(cameraTarget);
         }
 
-        // ==================== CIRCULAR OFFICE ====================
+        // ==================== COLLISION DETECTION ====================
+        function isPointInRoom(x, z) {
+            // Circular office
+            const distFromCenter = Math.sqrt(x*x + z*z);
+            if (distFromCenter < 6.5) return true;
+
+            // Hallway
+            if (x >= -2 && x <= 2 && z >= 6.5 && z <= 12) return true;
+
+            // CEO Room
+            if (x >= 2 && x <= 10 && z >= 6.5 && z <= 14) return true;
+
+            // Reception
+            if (x >= -10 && x <= -2 && z >= 6.5 && z <= 14) return true;
+
+            return false;
+        }
+
+        function getNearestValidPoint(x, z) {
+            // If in circular room, keep in circle
+            const dist = Math.sqrt(x*x + z*z);
+            if (dist < 6.5 && z < 6.5) {
+                if (dist > 6.3) {
+                    const angle = Math.atan2(z, x);
+                    return { x: Math.cos(angle) * 6.3, z: Math.sin(angle) * 6.3 };
+                }
+                return { x, z };
+            }
+
+            // Hallway bounds
+            if (x >= -2 && x <= 2 && z >= 6.5) {
+                return { x: Math.max(-1.8, Math.min(1.8, x)), z: Math.min(11.8, z) };
+            }
+
+            // CEO room
+            if (x >= 2 && z >= 6.5) {
+                return { x: Math.min(9.8, x), z: Math.min(13.8, z) };
+            }
+
+            // Reception
+            if (x <= -2 && z >= 6.5) {
+                return { x: Math.max(-9.8, x), z: Math.min(13.8, z) };
+            }
+
+            // Default: project to nearest room entrance
+            if (z < 6.5) {
+                const angle = Math.atan2(z, x);
+                return { x: Math.cos(angle) * 6.3, z: Math.sin(angle) * 6.3 };
+            }
+            return { x: Math.max(-1.8, Math.min(1.8, x)), z: 6.5 };
+        }
+
+        function checkCollision(pos, radius) {
+            // Check desk collisions
+            for (let desk of desks) {
+                const dx = pos.x - desk.pos.x;
+                const dz = pos.z - desk.pos.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < desk.radius + radius) return true;
+            }
+
+            // Check agent collisions
+            for (let agent of agents) {
+                if (agent.mesh.position === pos) continue;
+                const dx = pos.x - agent.mesh.position.x;
+                const dz = pos.z - agent.mesh.position.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < 0.8 + radius) return true;
+            }
+
+            return false;
+        }
+
+        // ==================== ROOM BUILDING ====================
         function buildCircularOffice() {
             const wallColor = 0x1a0a2e;
             const floorColor = 0x0d0d18;
 
-            // Circular floor
+            // Circular floor - dark wood look
             const floor = new THREE.Mesh(
-                new THREE.CircleGeometry(6, 64),
-                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.9 })
+                new THREE.CircleGeometry(6.5, 64),
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.85, metalness: 0.1 })
             );
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // Outer ring floor (slightly darker)
-            const outerFloor = new THREE.Mesh(
-                new THREE.RingGeometry(6, 8, 64),
-                new THREE.MeshStandardMaterial({ color: 0x08080f, roughness: 0.95 })
-            );
-            outerFloor.rotation.x = -Math.PI / 2;
-            outerFloor.position.y = -0.005;
-            scene.add(outerFloor);
-
-            // Circular wall (curved)
-            const wallGeo = new THREE.CylinderGeometry(7.5, 7.5, 5, 64, 1, true);
-            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.95, side: THREE.BackSide });
+            // Circular wall
+            const wallGeo = new THREE.CylinderGeometry(6.5, 6.5, 5.5, 64, 1, true);
+            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9, side: THREE.BackSide });
             const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.y = 2.5;
+            wall.position.y = 2.75;
             wall.receiveShadow = true;
             scene.add(wall);
+            walls.push({ type: 'circle', center: { x: 0, z: 0 }, radius: 6.5 });
 
-            // Wall trim (glowing ring at top)
-            const trimGeo = new THREE.TorusGeometry(7.5, 0.03, 8, 64);
-            const trimMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.3 });
+            // Wall trim - gold accent
+            const trimGeo = new THREE.TorusGeometry(6.5, 0.02, 8, 64);
+            const trimMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, emissive: 0x8b7355, emissiveIntensity: 0.2 });
             const trim = new THREE.Mesh(trimGeo, trimMat);
             trim.rotation.x = Math.PI / 2;
-            trim.position.y = 4.8;
+            trim.position.y = 5.2;
             scene.add(trim);
 
-            // Ceiling (partial — like a dome cut)
-            const ceilingGeo = new THREE.SphereGeometry(7.5, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.35);
+            // Ceiling dome
+            const ceilingGeo = new THREE.SphereGeometry(6.5, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.3);
             const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 1, side: THREE.BackSide });
             const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
             ceiling.position.y = 0;
             scene.add(ceiling);
 
-            // Center table (meeting area)
+            // Center round table
             const tableTop = new THREE.Mesh(
-                new THREE.CylinderGeometry(1, 1, 0.06, 32),
-                new THREE.MeshStandardMaterial({ color: 0x151520, roughness: 0.3, metalness: 0.7 })
+                new THREE.CylinderGeometry(1.2, 1.2, 0.08, 32),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.3, metalness: 0.6 })
             );
-            tableTop.position.y = 0.7;
+            tableTop.position.y = 0.75;
             tableTop.castShadow = true;
             scene.add(tableTop);
 
+            // Table edge glow
             const tableGlow = new THREE.Mesh(
-                new THREE.TorusGeometry(1, 0.015, 8, 32),
-                new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.4 })
+                new THREE.TorusGeometry(1.2, 0.012, 8, 32),
+                new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: 0x7c3aed, emissiveIntensity: 0.3 })
             );
             tableGlow.rotation.x = Math.PI / 2;
-            tableGlow.position.y = 0.67;
+            tableGlow.position.y = 0.71;
             scene.add(tableGlow);
 
-            // Center light
-            const centerLight = new THREE.PointLight(0x7c3aed, 0.4, 6);
-            centerLight.position.set(0, 3, 0);
+            // Center chandelier light
+            const centerLight = new THREE.PointLight(0xffeedd, 0.3, 8);
+            centerLight.position.set(0, 4, 0);
             scene.add(centerLight);
 
-            // Hallway entrance
-            buildHallway();
+            // Wall sconces
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const sconceX = Math.cos(angle) * 6.3;
+                const sconceZ = Math.sin(angle) * 6.3;
 
-            // Logo on back wall
-            buildLogo();
+                const sconce = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.15, 0.3, 0.08),
+                    new THREE.MeshStandardMaterial({ color: 0x8b7355, emissive: 0x8b7355, emissiveIntensity: 0.3 })
+                );
+                sconce.position.set(sconceX, 2.5, sconceZ);
+                sconce.lookAt(0, 2.5, 0);
+                scene.add(sconce);
 
-            // Posters scattered randomly
-            buildPosters();
+                const sconceLight = new THREE.PointLight(0xffcc88, 0.2, 3);
+                sconceLight.position.set(sconceX * 0.9, 2.5, sconceZ * 0.9);
+                scene.add(sconceLight);
+            }
         }
 
         function buildHallway() {
             const wallColor = 0x1a0a2e;
+            const floorColor = 0x0a0a12;
 
             // Hallway floor
-            const hallFloor = new THREE.Mesh(
-                new THREE.PlaneGeometry(3, 5),
-                new THREE.MeshStandardMaterial({ color: 0x08080f, roughness: 0.95 })
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(4, 5.5),
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.9 })
             );
-            hallFloor.rotation.x = -Math.PI / 2;
-            hallFloor.position.set(0, 0.01, 9.5);
-            scene.add(hallFloor);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, 0.01, 9.25);
+            floor.receiveShadow = true;
+            scene.add(floor);
 
             // Hall walls
-            const hallLeft = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor })
+            const leftWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(5.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
             );
-            hallLeft.position.set(-1.5, 2.25, 9.5);
-            hallLeft.rotation.y = Math.PI / 2;
-            scene.add(hallLeft);
+            leftWall.position.set(-2, 2.5, 9.25);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
 
-            const hallRight = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 4.5),
-                new THREE.MeshStandardMaterial({ color: wallColor })
+            const rightWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(5.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
             );
-            hallRight.position.set(1.5, 2.25, 9.5);
-            hallRight.rotation.y = -Math.PI / 2;
-            scene.add(hallRight);
+            rightWall.position.set(2, 2.5, 9.25);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
 
-            // Door frame
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0x2a2a45, metalness: 0.6 });
-            const topFrame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 0.15), frameMat);
-            topFrame.position.set(0, 4, 7.5);
+            // Door frame to circular office
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, metalness: 0.7, roughness: 0.3 });
+
+            const topFrame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.12, 0.15), frameMat);
+            topFrame.position.set(0, 4.2, 6.5);
             scene.add(topFrame);
 
-            const leftFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4, 0.15), frameMat);
-            leftFrame.position.set(-1.55, 2, 7.5);
+            const leftFrame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4.2, 0.15), frameMat);
+            leftFrame.position.set(-2.05, 2.1, 6.5);
             scene.add(leftFrame);
 
-            const rightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4, 0.15), frameMat);
-            rightFrame.position.set(1.55, 2, 7.5);
+            const rightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4.2, 0.15), frameMat);
+            rightFrame.position.set(2.05, 2.1, 6.5);
             scene.add(rightFrame);
+
+            // Ceiling lights in hallway
+            for (let i = 0; i < 3; i++) {
+                const light = new THREE.PointLight(0xffeedd, 0.25, 4);
+                light.position.set(0, 4.5, 7.5 + i * 1.8);
+                scene.add(light);
+            }
+        }
+
+        function buildCEORoom() {
+            const wallColor = 0x1a0a2e;
+            const floorColor = 0x0d0d18;
+
+            // Floor
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(8, 7.5),
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.85 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(6, 0.01, 10.25);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Walls
+            const backWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(8, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            backWall.position.set(6, 2.5, 14);
+            backWall.rotation.y = Math.PI;
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(7.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            leftWall.position.set(2, 2.5, 10.25);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(7.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            rightWall.position.set(10, 2.5, 10.25);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+
+            // CEO desk
+            const ceoDesk = new THREE.Group();
+            const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a1a1a, roughness: 0.3, metalness: 0.5 });
+
+            const deskTop = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 1.2), deskMat);
+            deskTop.position.y = 0.8;
+            ceoDesk.add(deskTop);
+
+            // Desk legs
+            const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8);
+            [[-1, -0.5], [1, -0.5], [-1, 0.5], [1, 0.5]].forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeo, deskMat);
+                leg.position.set(x, 0.4, z);
+                ceoDesk.add(leg);
+            });
+
+            ceoDesk.position.set(6, 0, 12);
+            scene.add(ceoDesk);
+
+            // CEO chair
+            const chair = buildChair(0x8b7355);
+            chair.position.set(6, 0, 10.5);
+            chair.lookAt(6, 0, 12);
+            scene.add(chair);
+
+            // Window (dark outside)
+            const windowFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 2, 0.1),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a2e, metalness: 0.8 })
+            );
+            windowFrame.position.set(6, 3, 13.95);
+            scene.add(windowFrame);
+
+            const windowGlass = new THREE.Mesh(
+                new THREE.PlaneGeometry(2.6, 1.6),
+                new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 0.1, metalness: 0.9 })
+            );
+            windowGlass.position.set(6, 3, 13.9);
+            scene.add(windowGlass);
+
+            // Light
+            const light = new THREE.PointLight(0xffeedd, 0.3, 6);
+            light.position.set(6, 4, 10);
+            scene.add(light);
+        }
+
+        function buildReception() {
+            const wallColor = 0x1a0a2e;
+            const floorColor = 0x0a0a12;
+
+            // Floor
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(8, 7.5),
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.9 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(-6, 0.01, 10.25);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Walls
+            const backWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(8, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            backWall.position.set(-6, 2.5, 14);
+            backWall.rotation.y = Math.PI;
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(7.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            leftWall.position.set(-10, 2.5, 10.25);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(7.5, 5),
+                new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+            );
+            rightWall.position.set(-2, 2.5, 10.25);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+
+            // Reception desk (curved)
+            const receptionDesk = new THREE.Group();
+            const deskMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4, metalness: 0.6 });
+
+            const deskTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.06, 0.8), deskMat);
+            deskTop.position.y = 0.9;
+            receptionDesk.add(deskTop);
+
+            const front = new THREE.Mesh(new THREE.BoxGeometry(2, 0.9, 0.1), deskMat);
+            front.position.set(0, 0.45, 0.35);
+            receptionDesk.add(front);
+
+            receptionDesk.position.set(-6, 0, 12);
+            scene.add(receptionDesk);
+
+            // Waiting chairs
+            for (let i = 0; i < 3; i++) {
+                const chair = buildChair(0x333344);
+                chair.position.set(-8 + i * 1.5, 0, 13);
+                chair.lookAt(-6, 0, 12);
+                scene.add(chair);
+            }
+
+            // Plant
+            const plant = buildPlant();
+            plant.position.set(-9, 0, 11);
+            scene.add(plant);
+
+            // Light
+            const light = new THREE.PointLight(0xffeedd, 0.25, 5);
+            light.position.set(-6, 4, 10);
+            scene.add(light);
+        }
+
+        function buildChair(colorHex) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
+
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), mat);
+            seat.position.y = 0.45;
+            group.add(seat);
+
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.05), mat);
+            back.position.set(0, 0.75, -0.22);
+            back.rotation.x = -0.1;
+            group.add(back);
+
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.45), mat);
+            base.position.y = 0.225;
+            group.add(base);
+
+            return group;
+        }
+
+        function buildPlant() {
+            const group = new THREE.Group();
+
+            // Pot
+            const pot = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25, 0.2, 0.4, 8),
+                new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.8 })
+            );
+            pot.position.y = 0.2;
+            group.add(pot);
+
+            // Leaves (simple spheres)
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x1a4a2a, roughness: 0.7 });
+            for (let i = 0; i < 5; i++) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), leafMat);
+                const angle = (i / 5) * Math.PI * 2;
+                leaf.position.set(Math.cos(angle) * 0.15, 0.5 + Math.random() * 0.3, Math.sin(angle) * 0.15);
+                leaf.scale.set(1, 1.5, 1);
+                group.add(leaf);
+            }
+
+            return group;
+        }
+
+        function buildDesk(colorHex) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x151520, roughness: 0.4, metalness: 0.7 });
+            const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.2 });
+
+            // Desktop
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.6), mat);
+            top.position.y = 0.72;
+            top.castShadow = true;
+            group.add(top);
+
+            // Glow edge strip
+            const edge = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.015, 0.62), glowMat);
+            edge.position.y = 0.7;
+            group.add(edge);
+
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.72);
+            [[-0.45, -0.25], [0.45, -0.25], [-0.45, 0.25], [0.45, 0.25]].forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeo, mat);
+                leg.position.set(x, 0.36, z);
+                group.add(leg);
+            });
+
+            // Monitor
+            const screen = new THREE.Mesh(
+                new THREE.BoxGeometry(0.35, 0.24, 0.015),
+                new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colorHex, emissiveIntensity: 0.35 })
+            );
+            screen.position.set(0, 0.95, -0.12);
+            screen.rotation.x = -0.06;
+            group.add(screen);
+
+            // Monitor stand
+            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.18), mat);
+            stand.position.set(0, 0.82, -0.12);
+            group.add(stand);
+
+            // Keyboard
+            const keyboard = new THREE.Mesh(
+                new THREE.BoxGeometry(0.4, 0.015, 0.15),
+                new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.5 })
+            );
+            keyboard.position.set(0, 0.74, 0.1);
+            group.add(keyboard);
+
+            // Mouse
+            const mouse = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, 0.02, 0.08),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4 })
+            );
+            mouse.position.set(0.3, 0.74, 0.1);
+            group.add(mouse);
+
+            return group;
         }
 
         function buildLogo() {
@@ -586,35 +956,35 @@
             loader.load('company-logo.png',
                 (tex) => {
                     const aspect = tex.image.width / tex.image.height;
-                    const w = 2.2;
+                    const w = 2.5;
                     const h = w / aspect;
 
-                    // Backing
+                    // 3D raised backing plate
                     const plate = new THREE.Mesh(
-                        new THREE.BoxGeometry(w + 0.15, h + 0.15, 0.06),
-                        new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.3, metalness: 0.8 })
+                        new THREE.BoxGeometry(w + 0.2, h + 0.2, 0.08),
+                        new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.2, metalness: 0.9 })
                     );
-                    plate.position.set(0, 3.5, -7.4);
+                    plate.position.set(0, 3.5, -6.3);
                     scene.add(plate);
 
-                    // Logo
+                    // Logo face
                     const logo = new THREE.Mesh(
                         new THREE.PlaneGeometry(w, h),
                         new THREE.MeshStandardMaterial({
                             map: tex,
                             transparent: true,
                             roughness: 0.2,
-                            metalness: 0.5,
+                            metalness: 0.6,
                             emissive: 0x7c3aed,
-                            emissiveIntensity: 0.15
+                            emissiveIntensity: 0.1
                         })
                     );
-                    logo.position.set(0, 3.5, -7.34);
+                    logo.position.set(0, 3.5, -6.25);
                     scene.add(logo);
 
-                    // Glow
-                    const glow = new THREE.PointLight(0x7c3aed, 0.25, 4);
-                    glow.position.set(0, 3.5, -7);
+                    // Glow behind logo
+                    const glow = new THREE.PointLight(0x7c3aed, 0.3, 5);
+                    glow.position.set(0, 3.5, -5.8);
                     scene.add(glow);
                 },
                 undefined,
@@ -625,38 +995,106 @@
         function buildPosters() {
             const loader = new THREE.TextureLoader();
             const placedPositions = [];
+            const wallConfigs = [];
+
+            // Generate wall positions for circular office
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                wallConfigs.push({
+                    x: Math.cos(angle) * 6.4,
+                    z: Math.sin(angle) * 6.4,
+                    rotY: angle + Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'circular'
+                });
+            }
+
+            // Hallway walls
+            for (let i = 0; i < 4; i++) {
+                wallConfigs.push({
+                    x: -1.9,
+                    z: 7 + i * 1.2,
+                    rotY: Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'hallway'
+                });
+                wallConfigs.push({
+                    x: 1.9,
+                    z: 7 + i * 1.2,
+                    rotY: -Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'hallway'
+                });
+            }
+
+            // CEO room walls
+            for (let i = 0; i < 3; i++) {
+                wallConfigs.push({
+                    x: 2.1,
+                    z: 7 + i * 2,
+                    rotY: Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'ceo'
+                });
+                wallConfigs.push({
+                    x: 9.9,
+                    z: 7 + i * 2,
+                    rotY: -Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'ceo'
+                });
+            }
+
+            // Reception walls
+            for (let i = 0; i < 3; i++) {
+                wallConfigs.push({
+                    x: -9.9,
+                    z: 7 + i * 2,
+                    rotY: Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'reception'
+                });
+                wallConfigs.push({
+                    x: -2.1,
+                    z: 7 + i * 2,
+                    rotY: -Math.PI / 2,
+                    y: 1.5 + Math.random() * 2,
+                    room: 'reception'
+                });
+            }
+
+            // Shuffle and assign posters
+            const shuffled = wallConfigs.sort(() => Math.random() - 0.5);
 
             POSTERS.forEach((poster, i) => {
+                if (i >= shuffled.length) return;
+                const pos = shuffled[i];
+
                 loader.load(poster,
                     (tex) => {
                         const aspect = tex.image.width / tex.image.height;
-                        const frameW = 0.7 + Math.random() * 0.4;
+                        const frameW = 0.6 + Math.random() * 0.5;
                         const frameH = frameW / aspect;
 
-                        // Random position on circular wall
-                        const angle = Math.random() * Math.PI * 2;
-                        const wallR = 7.45;
-                        const x = Math.cos(angle) * wallR;
-                        const z = Math.sin(angle) * wallR;
-                        const y = 1.5 + Math.random() * 2;
-
-                        // Check not too close to others
+                        // Check distance from other posters
                         let tooClose = false;
                         for (let p of placedPositions) {
-                            const dx = p.x - x, dy = p.y - y, dz = p.z - z;
-                            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.2) tooClose = true;
+                            const dx = p.x - pos.x;
+                            const dy = p.y - pos.y;
+                            const dz = p.z - pos.z;
+                            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.5) tooClose = true;
                         }
                         if (tooClose) return;
 
-                        placedPositions.push({ x, y, z });
+                        placedPositions.push({ x: pos.x, y: pos.y, z: pos.z });
 
                         // Frame
                         const frame = new THREE.Mesh(
                             new THREE.BoxGeometry(frameW + 0.06, frameH + 0.06, 0.04),
-                            new THREE.MeshStandardMaterial({ color: 0x1f1f35, roughness: 0.4, metalness: 0.5 })
+                            new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.3, metalness: 0.6 })
                         );
-                        frame.position.set(x, y, z);
-                        frame.lookAt(0, y, 0);
+                        frame.position.set(pos.x, pos.y, pos.z);
+                        frame.rotation.y = pos.rotY;
                         scene.add(frame);
 
                         // Picture
@@ -664,21 +1102,21 @@
                             new THREE.PlaneGeometry(frameW, frameH),
                             new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 })
                         );
-                        const offset = 0.03;
+                        const offset = 0.025;
                         pic.position.set(
-                            x + Math.cos(angle) * offset,
-                            y,
-                            z + Math.sin(angle) * offset
+                            pos.x + Math.cos(pos.rotY + Math.PI/2) * offset,
+                            pos.y,
+                            pos.z + Math.sin(pos.rotY + Math.PI/2) * offset
                         );
-                        pic.lookAt(0, y, 0);
+                        pic.rotation.y = pos.rotY;
                         scene.add(pic);
 
-                        // Small light
-                        const light = new THREE.PointLight(0xffffff, 0.1, 2);
+                        // Small spotlight above
+                        const light = new THREE.PointLight(0xffffff, 0.08, 2);
                         light.position.set(
-                            x + Math.cos(angle) * 0.5,
-                            y + 0.5,
-                            z + Math.sin(angle) * 0.5
+                            pos.x + Math.cos(pos.rotY + Math.PI/2) * 0.4,
+                            pos.y + 0.6,
+                            pos.z + Math.sin(pos.rotY + Math.PI/2) * 0.4
                         );
                         scene.add(light);
                     },
@@ -688,48 +1126,8 @@
             });
         }
 
-        function buildDesk(colorHex) {
-            const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: 0x151520, roughness: 0.4, metalness: 0.7 });
-            const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.2 });
-
-            // Desktop
-            const top = new THREE.Mesh(new THREE.BoxGeometry(1, 0.04, 0.55), mat);
-            top.position.y = 0.7;
-            top.castShadow = true;
-            group.add(top);
-
-            // Glow edge
-            const edge = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.012, 0.57), glowMat);
-            edge.position.y = 0.68;
-            group.add(edge);
-
-            // Legs
-            const legGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.7);
-            [[-0.4, -0.2], [0.4, -0.2], [-0.4, 0.2], [0.4, 0.2]].forEach(([x, z]) => {
-                const leg = new THREE.Mesh(legGeo, mat);
-                leg.position.set(x, 0.35, z);
-                group.add(leg);
-            });
-
-            // Monitor
-            const screen = new THREE.Mesh(
-                new THREE.BoxGeometry(0.32, 0.22, 0.01),
-                new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colorHex, emissiveIntensity: 0.35 })
-            );
-            screen.position.set(0, 0.92, -0.1);
-            screen.rotation.x = -0.06;
-            group.add(screen);
-
-            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.16), mat);
-            stand.position.set(0, 0.8, -0.1);
-            group.add(stand);
-
-            return group;
-        }
-
-        // ==================== ROBOT (Office Worker Style) ====================
-        class Robot {
+        // ==================== OFFICE WORKER (Humanoid) ====================
+        class OfficeWorker {
             constructor(index, config) {
                 this.index = index;
                 this.config = config;
@@ -737,127 +1135,144 @@
                 this.stateTimer = Math.random() * 3;
                 this.targetPos = new THREE.Vector3();
                 this.interactPartner = null;
-                this.hoverOffset = Math.random() * Math.PI * 2;
+                this.walkSpeed = 0.8;
+                this.collisionRadius = 0.35;
 
-                this.mesh = this.buildWorker(config);
-                const startAngle = config.angle + (Math.random() - 0.5) * 0.3;
-                const startR = config.radius + (Math.random() - 0.5) * 0.8;
+                this.mesh = this.buildWorker(config.color);
+
+                // Start near their desk
+                const angle = config.angle || (Math.random() * Math.PI * 2);
+                const startR = 1.5 + Math.random() * 1.5;
                 this.mesh.position.set(
-                    Math.cos(startAngle) * startR,
+                    config.deskPos.x + Math.cos(angle) * startR,
                     0,
-                    Math.sin(startAngle) * startR
+                    config.deskPos.z + Math.sin(angle) * startR
                 );
                 this.mesh.userData = { agentIndex: index };
             }
 
-            buildWorker(config) {
+            buildWorker(colorHex) {
                 const group = new THREE.Group();
-                const color = config.color;
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a28, roughness: 0.5, metalness: 0.6 });
-                const suitMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.6, metalness: 0.4 });
-                const glowMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
-                const skinMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.7 });
+                const suitColor = 0x1e1e2e;
+                const shirtColor = 0x2a2a3a;
+                const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.4 });
+                const skinMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.7 });
+                const suitMat = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.5, metalness: 0.3 });
+                const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6 });
 
-                // Torso (suit jacket look)
-                const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.45, 8), suitMat);
-                torso.position.y = 0.85;
+                // Torso (suit jacket)
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.22), suitMat);
+                torso.position.y = 1.0;
                 torso.castShadow = true;
                 group.add(torso);
 
-                // Chest glow badge
-                const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), glowMat);
-                badge.position.set(0, 0.95, 0.12);
-                badge.rotation.x = Math.PI / 2;
-                group.add(badge);
+                // Shirt (visible at neck)
+                const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), shirtMat);
+                shirt.position.set(0, 1.25, 0.1);
+                group.add(shirt);
 
-                // Head (more humanoid)
-                const headGroup = new THREE.Group();
-                headGroup.position.y = 1.18;
-                group.add(headGroup);
+                // Tie (glowing accent)
+                const tie = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.02), glowMat);
+                tie.position.set(0, 1.05, 0.12);
+                group.add(tie);
 
-                // Face base
-                const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), skinMat);
+                // Head group
+                this.headGroup = new THREE.Group();
+                this.headGroup.position.y = 1.4;
+                group.add(this.headGroup);
+
+                // Head
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), skinMat);
                 head.castShadow = true;
-                headGroup.add(head);
+                this.headGroup.add(head);
 
-                // Visor / glasses
-                const visor = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.2, 0.05, 0.08),
-                    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 0.6, roughness: 0.1 })
+                // Hair (dark top)
+                const hair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.145, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.4),
+                    new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.9 })
                 );
-                visor.position.set(0, 0.02, 0.1);
-                headGroup.add(visor);
+                hair.position.y = 0.02;
+                this.headGroup.add(hair);
 
-                // Eyes (glowing dots behind visor)
-                const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
-                const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
+                // Glasses / Visor
+                const glasses = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.22, 0.05, 0.08),
+                    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: colorHex, emissiveIntensity: 0.5, roughness: 0.1 })
+                );
+                glasses.position.set(0, 0.02, 0.12);
+                this.headGroup.add(glasses);
+
+                // Eyes (glowing behind glasses)
+                const eyeGeo = new THREE.SphereGeometry(0.02, 8, 8);
+                const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9 });
                 const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-                leftEye.position.set(-0.05, 0.02, 0.13);
-                headGroup.add(leftEye);
+                leftEye.position.set(-0.06, 0.02, 0.13);
+                this.headGroup.add(leftEye);
                 const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-                rightEye.position.set(0.05, 0.02, 0.13);
-                headGroup.add(rightEye);
+                rightEye.position.set(0.06, 0.02, 0.13);
+                this.headGroup.add(rightEye);
 
                 // Neck
-                const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.08), bodyMat);
-                neck.position.y = 1.08;
+                const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08), skinMat);
+                neck.position.y = 1.32;
                 group.add(neck);
 
                 // Shoulders
-                const shoulderGeo = new THREE.SphereGeometry(0.065, 8, 8);
+                const shoulderGeo = new THREE.SphereGeometry(0.08, 8, 8);
                 const leftShoulder = new THREE.Mesh(shoulderGeo, suitMat);
-                leftShoulder.position.set(-0.2, 1.02, 0);
+                leftShoulder.position.set(-0.22, 1.18, 0);
                 group.add(leftShoulder);
                 const rightShoulder = new THREE.Mesh(shoulderGeo, suitMat);
-                rightShoulder.position.set(0.2, 1.02, 0);
+                rightShoulder.position.set(0.22, 1.18, 0);
                 group.add(rightShoulder);
 
                 // Arms
-                const armGeo = new THREE.CylinderGeometry(0.035, 0.03, 0.28);
-                this.leftArm = new THREE.Mesh(armGeo, bodyMat);
-                this.leftArm.position.set(-0.22, 0.82, 0);
-                this.leftArm.rotation.z = 0.15;
+                const armGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.35);
+                this.leftArm = new THREE.Mesh(armGeo, suitMat);
+                this.leftArm.position.set(-0.25, 0.95, 0);
+                this.leftArm.rotation.z = 0.1;
                 group.add(this.leftArm);
 
-                this.rightArm = new THREE.Mesh(armGeo, bodyMat);
-                this.rightArm.position.set(0.22, 0.82, 0);
-                this.rightArm.rotation.z = -0.15;
+                this.rightArm = new THREE.Mesh(armGeo, suitMat);
+                this.rightArm.position.set(0.25, 0.95, 0);
+                this.rightArm.rotation.z = -0.1;
                 group.add(this.rightArm);
 
                 // Hands
-                const handGeo = new THREE.SphereGeometry(0.035, 8, 8);
-                const leftHand = new THREE.Mesh(handGeo, glowMat);
-                leftHand.position.set(0, -0.16, 0);
+                const handGeo = new THREE.SphereGeometry(0.04, 8, 8);
+                const leftHand = new THREE.Mesh(handGeo, skinMat);
+                leftHand.position.set(0, -0.2, 0);
                 this.leftArm.add(leftHand);
 
-                const rightHand = new THREE.Mesh(handGeo, glowMat);
-                rightHand.position.set(0, -0.16, 0);
+                const rightHand = new THREE.Mesh(handGeo, skinMat);
+                rightHand.position.set(0, -0.2, 0);
                 this.rightArm.add(rightHand);
 
                 // Hips
-                const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.12, 8), suitMat);
-                hips.position.y = 0.56;
+                const hips = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.2), suitMat);
+                hips.position.y = 0.72;
                 group.add(hips);
 
                 // Legs
-                const legGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.38);
-                this.leftLeg = new THREE.Mesh(legGeo, bodyMat);
-                this.leftLeg.position.set(-0.08, 0.31, 0);
+                const legGeo = new THREE.CylinderGeometry(0.055, 0.05, 0.45);
+                this.leftLeg = new THREE.Mesh(legGeo, suitMat);
+                this.leftLeg.position.set(-0.1, 0.42, 0);
                 group.add(this.leftLeg);
 
-                this.rightLeg = new THREE.Mesh(legGeo, bodyMat);
-                this.rightLeg.position.set(0.08, 0.31, 0);
+                this.rightLeg = new THREE.Mesh(legGeo, suitMat);
+                this.rightLeg.position.set(0.1, 0.42, 0);
                 group.add(this.rightLeg);
 
-                // Feet
-                const footGeo = new THREE.BoxGeometry(0.07, 0.04, 0.12);
-                const leftFoot = new THREE.Mesh(footGeo, bodyMat);
-                leftFoot.position.set(0, -0.21, 0.03);
-                this.leftLeg.add(leftFoot);
+                // Shoes
+                const shoeGeo = new THREE.BoxGeometry(0.08, 0.05, 0.15);
+                const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.5 });
+                const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+                leftShoe.position.set(0, -0.25, 0.03);
+                this.leftLeg.add(leftShoe);
 
-                const rightFoot = new THREE.Mesh(footGeo, bodyMat);
-                rightFoot.position.set(0, -0.21, 0.03);
-                this.rightLeg.add(rightFoot);
+                const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
+                rightShoe.position.set(0, -0.25, 0.03);
+                this.rightLeg.add(rightShoe);
 
                 return group;
             }
@@ -875,7 +1290,7 @@
                             this.state = 'idle';
                             this.stateTimer = 2 + Math.random() * 3;
                         } else {
-                            this.moveToTarget(delta);
+                            this.moveToTarget(delta, allAgents);
                             this.animateWalk(time);
                         }
                         break;
@@ -890,12 +1305,13 @@
                         break;
                 }
 
+                // Check for nearby workers to interact
                 if (this.state === 'idle' || this.state === 'walking') {
                     for (let other of allAgents) {
                         if (other === this) continue;
                         if (other.state === 'interacting') continue;
                         const d = this.mesh.position.distanceTo(other.mesh.position);
-                        if (d < 1.3 && Math.random() < 0.01) {
+                        if (d < 1.5 && Math.random() < 0.008) {
                             this.state = 'interacting';
                             this.stateTimer = 3 + Math.random() * 2;
                             this.interactPartner = other;
@@ -907,9 +1323,10 @@
                     }
                 }
 
+                // Smooth look at target
                 const target = this.interactPartner ? this.interactPartner.mesh.position : this.targetPos;
                 const lookPos = target.clone();
-                lookPos.y = this.mesh.position.y + 0.9;
+                lookPos.y = this.mesh.position.y + 1.0;
                 const dir = new THREE.Vector3().subVectors(lookPos, this.mesh.position);
                 dir.y = 0;
                 if (dir.length() > 0.1) {
@@ -922,77 +1339,137 @@
             }
 
             pickTarget(allAgents) {
-                const r = Math.random();
-                if (r < 0.5) {
-                    const desk = AGENTS[Math.floor(Math.random() * AGENTS.length)];
-                    const x = Math.cos(desk.angle) * desk.radius;
-                    const z = Math.sin(desk.angle) * desk.radius;
-                    this.targetPos.set(x + (Math.random()-0.5)*1.5, 0, z + (Math.random()-0.5)*1.5);
-                } else if (r < 0.8) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const rad = 1 + Math.random() * 4;
-                    this.targetPos.set(Math.cos(angle) * rad, 0, Math.sin(angle) * rad);
-                } else {
-                    const other = allAgents[Math.floor(Math.random() * allAgents.length)];
-                    if (other !== this) {
-                        this.targetPos.copy(other.mesh.position);
-                        this.targetPos.x += (Math.random()-0.5);
-                        this.targetPos.z += (Math.random()-0.5);
-                    }
+                const rooms = ['circular', 'hallway', 'ceo', 'reception'];
+                const room = rooms[Math.floor(Math.random() * rooms.length)];
+                let x, z;
+
+                switch(room) {
+                    case 'circular':
+                        const angle = Math.random() * Math.PI * 2;
+                        const rad = 1 + Math.random() * 5;
+                        x = Math.cos(angle) * rad;
+                        z = Math.sin(angle) * rad;
+                        break;
+                    case 'hallway':
+                        x = -1.5 + Math.random() * 3;
+                        z = 7 + Math.random() * 4.5;
+                        break;
+                    case 'ceo':
+                        x = 2.5 + Math.random() * 7;
+                        z = 7 + Math.random() * 6.5;
+                        break;
+                    case 'reception':
+                        x = -9.5 + Math.random() * 7;
+                        z = 7 + Math.random() * 6.5;
+                        break;
                 }
+
+                // Ensure valid position
+                const valid = getNearestValidPoint(x, z);
+                this.targetPos.set(valid.x, 0, valid.z);
                 this.state = 'walking';
             }
 
-            moveToTarget(delta) {
+            moveToTarget(delta, allAgents) {
                 const dir = new THREE.Vector3().subVectors(this.targetPos, this.mesh.position);
                 dir.y = 0;
                 const dist = dir.length();
+
+                if (dist < 0.1) return;
+
                 dir.normalize();
-                const move = Math.min(dist, 0.8 * delta);
-                this.mesh.position.add(dir.multiplyScalar(move));
+
+                // Check for collisions and adjust path
+                const nextPos = this.mesh.position.clone().add(dir.clone().multiplyScalar(this.walkSpeed * delta));
+
+                // Check room bounds
+                if (!isPointInRoom(nextPos.x, nextPos.z)) {
+                    const valid = getNearestValidPoint(nextPos.x, nextPos.z);
+                    nextPos.x = valid.x;
+                    nextPos.z = valid.z;
+                }
+
+                // Check desk collisions - slide around them
+                for (let desk of desks) {
+                    const dx = nextPos.x - desk.pos.x;
+                    const dz = nextPos.z - desk.pos.z;
+                    const d = Math.sqrt(dx*dx + dz*dz);
+                    if (d < desk.radius + this.collisionRadius) {
+                        // Push away from desk
+                        const pushDir = new THREE.Vector3(dx, 0, dz).normalize();
+                        const pushDist = (desk.radius + this.collisionRadius) - d + 0.1;
+                        nextPos.x += pushDir.x * pushDist;
+                        nextPos.z += pushDir.z * pushDist;
+                    }
+                }
+
+                // Check other agent collisions
+                for (let agent of allAgents) {
+                    if (agent === this) continue;
+                    const dx = nextPos.x - agent.mesh.position.x;
+                    const dz = nextPos.z - agent.mesh.position.z;
+                    const d = Math.sqrt(dx*dx + dz*dz);
+                    if (d < this.collisionRadius * 2) {
+                        // Push away from other agent
+                        const pushDir = new THREE.Vector3(dx, 0, dz).normalize();
+                        const pushDist = (this.collisionRadius * 2) - d + 0.05;
+                        nextPos.x += pushDir.x * pushDist;
+                        nextPos.z += pushDir.z * pushDist;
+                    }
+                }
+
+                // Final room check after adjustments
+                if (!isPointInRoom(nextPos.x, nextPos.z)) {
+                    const valid = getNearestValidPoint(nextPos.x, nextPos.z);
+                    nextPos.x = valid.x;
+                    nextPos.z = valid.z;
+                }
+
+                this.mesh.position.x = nextPos.x;
+                this.mesh.position.z = nextPos.z;
             }
 
             animateIdle(time) {
                 this.mesh.position.y = 0;
                 // Breathing
-                this.mesh.children[0].scale.y = 1 + Math.sin(time * 2 + this.index) * 0.015;
+                this.mesh.children[0].scale.y = 1 + Math.sin(time * 2 + this.index) * 0.01;
                 // Arms sway
-                this.leftArm.rotation.z = 0.15 + Math.sin(time * 1.2 + this.index) * 0.03;
-                this.rightArm.rotation.z = -0.15 - Math.sin(time * 1.2 + this.index) * 0.03;
-                // Head look
-                this.mesh.children[2].rotation.y = Math.sin(time * 0.4 + this.index) * 0.2;
+                this.leftArm.rotation.z = 0.1 + Math.sin(time * 1.2 + this.index) * 0.03;
+                this.rightArm.rotation.z = -0.1 - Math.sin(time * 1.2 + this.index) * 0.03;
+                // Head look around
+                this.headGroup.rotation.y = Math.sin(time * 0.4 + this.index) * 0.25;
                 // Reset legs
                 this.leftLeg.rotation.x = 0;
                 this.rightLeg.rotation.x = 0;
             }
 
             animateWalk(time) {
-                const speed = 6;
-                const amp = 0.4;
+                const speed = 5;
+                const amp = 0.35;
                 // Legs walk
                 this.leftLeg.rotation.x = Math.sin(time * speed + this.index * 2) * amp;
                 this.rightLeg.rotation.x = Math.sin(time * speed + this.index * 2 + Math.PI) * amp;
                 // Arms swing opposite
-                this.leftArm.rotation.x = Math.sin(time * speed + this.index * 2 + Math.PI) * 0.25;
-                this.rightArm.rotation.x = Math.sin(time * speed + this.index * 2) * 0.25;
+                this.leftArm.rotation.x = Math.sin(time * speed + this.index * 2 + Math.PI) * 0.2;
+                this.rightArm.rotation.x = Math.sin(time * speed + this.index * 2) * 0.2;
                 // Body bob
-                this.mesh.position.y = Math.abs(Math.sin(time * speed * 2 + this.index)) * 0.02;
+                this.mesh.position.y = Math.abs(Math.sin(time * speed * 2 + this.index)) * 0.015;
                 // Head steady
-                this.mesh.children[2].rotation.x = 0.05;
+                this.headGroup.rotation.x = 0.02;
             }
 
             animateInteract(time) {
                 if (!this.interactPartner) return;
-                // Excited gesture
-                this.leftArm.rotation.z = 0.3 + Math.sin(time * 5) * 0.2;
-                this.rightArm.rotation.z = -0.3 - Math.sin(time * 5 + 1) * 0.2;
-                this.leftArm.rotation.x = -0.4 + Math.sin(time * 3) * 0.15;
-                this.rightArm.rotation.x = -0.4 + Math.sin(time * 3 + 1) * 0.15;
+                // Gesture with hands
+                this.leftArm.rotation.z = 0.3 + Math.sin(time * 4) * 0.15;
+                this.rightArm.rotation.z = -0.3 - Math.sin(time * 4 + 1) * 0.15;
+                this.leftArm.rotation.x = -0.3 + Math.sin(time * 3) * 0.1;
+                this.rightArm.rotation.x = -0.3 + Math.sin(time * 3 + 1) * 0.1;
                 // Head nod
-                this.mesh.children[2].rotation.x = Math.sin(time * 4) * 0.08;
+                this.headGroup.rotation.x = Math.sin(time * 3) * 0.06;
                 // Lean in
                 const partnerDir = new THREE.Vector3().subVectors(this.interactPartner.mesh.position, this.mesh.position);
-                this.mesh.rotation.x = partnerDir.z * 0.02;
+                this.mesh.rotation.x = partnerDir.z * 0.01;
             }
         }
 
@@ -1018,7 +1495,7 @@
 
                 if (isDragging) {
                     cameraAngle.theta -= dx * 0.005;
-                    cameraAngle.phi = Math.max(0.3, Math.min(Math.PI / 2 - 0.15, cameraAngle.phi - dy * 0.005));
+                    cameraAngle.phi = Math.max(0.3, Math.min(Math.PI / 2 - 0.1, cameraAngle.phi - dy * 0.005));
                     updateCamera();
                     dragStart.x = e.clientX;
                     dragStart.y = e.clientY;
@@ -1037,8 +1514,9 @@
         }
 
         function onMouseUp() { isMouseDown = false; }
+
         function onWheel(e) {
-            cameraRadius = Math.max(4, Math.min(18, cameraRadius + e.deltaY * 0.01));
+            cameraRadius = Math.max(4, Math.min(20, cameraRadius + e.deltaY * 0.01));
             updateCamera();
         }
 
@@ -1058,7 +1536,7 @@
             agents.forEach((agent, i) => {
                 const label = document.getElementById(`label-${i}`);
                 const pos = agent.mesh.position.clone();
-                pos.y += 1.45;
+                pos.y += 1.7;
                 pos.project(camera);
 
                 const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
@@ -1137,7 +1615,7 @@
 
             const response = await callAgentAPI(text);
             typingDiv.remove();
-            appendMessage('agent', response || 'No response. Check API key.');
+            appendMessage('agent', response || 'No response. Check your API key.');
         }
 
         async function callAgentAPI(userMessage) {
@@ -1146,15 +1624,40 @@
             const history = chatHistory[key] || [];
             const recent = history.slice(-8);
 
-            let context = config.systemPrompt + '\n\n';
-            recent.forEach(m => context += `${m.role}: ${m.text}\n`);
+            let context = config.systemPrompt + '
+
+';
+            recent.forEach(m => context += `${m.role}: ${m.text}
+`);
             context += `user: ${userMessage}`;
 
-            // If Clock is asked to update tasks, handle it
-            if (config.name === 'Clock' && (userMessage.toLowerCase().includes('schedule') || userMessage.toLowerCase().includes('task') || userMessage.toLowerCase().includes('remind'))) {
-                // Clock will acknowledge in its response, but we also update UI if user explicitly says "add task" or "remove task"
-                if (userMessage.toLowerCase().includes('add task') || userMessage.toLowerCase().includes('new task')) {
-                    // Extract task info from message or let Clock handle it in response
+            // Clock task management
+            if (config.name === 'Clock') {
+                const lower = userMessage.toLowerCase();
+                if (lower.includes('add task') || lower.includes('new task')) {
+                    const taskMatch = userMessage.match(/(?:add|new) task[:\s]*(.+)/i);
+                    if (taskMatch) {
+                        addTask(taskMatch[1], 'Custom', '#7c3aed');
+                        return `✅ Added task: "${taskMatch[1]}" to your schedule. It's now visible in the Today's Tasks panel.`;
+                    }
+                }
+                if (lower.includes('remove task') || lower.includes('delete task')) {
+                    const taskMatch = userMessage.match(/(?:remove|delete) task[:\s]*(.+)/i);
+                    if (taskMatch) {
+                        removeTask(taskMatch[1]);
+                        return `✅ Removed task matching "${taskMatch[1]}" from your schedule.`;
+                    }
+                }
+                if (lower.includes('what do i do today') || lower.includes('schedule today')) {
+                    const tasks = userTasks.length > 0 ? userTasks : defaultTasks;
+                    let response = "📋 Here's what you need to do today:
+
+";
+                    tasks.forEach((t, i) => {
+                        response += `${i+1}. ${t.task} — ${t.time}
+`;
+                    });
+                    return response;
                 }
             }
 
@@ -1167,7 +1670,7 @@
 
         async function callGemini(prompt) {
             const key = localStorage.getItem('geminiKey');
-            if (!key) return 'Error: No Gemini key saved.';
+            if (!key) return 'Error: No Gemini API key saved. Paste it in the top bar and click Save.';
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
                     method: 'POST',
@@ -1175,13 +1678,13 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await res.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response';
-            } catch (e) { return 'Error: ' + e.message; }
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response from Gemini.';
+            } catch (e) { return 'Error calling Gemini: ' + e.message; }
         }
 
         async function callGroq(prompt) {
             const key = localStorage.getItem('groqKey');
-            if (!key) return 'Error: No Groq key saved.';
+            if (!key) return 'Error: No Groq API key saved. Paste it in the top bar and click Save.';
             try {
                 const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
@@ -1193,8 +1696,8 @@
                     })
                 });
                 const data = await res.json();
-                return data.choices?.[0]?.message?.content || 'Empty response';
-            } catch (e) { return 'Error: ' + e.message; }
+                return data.choices?.[0]?.message?.content || 'Empty response from Groq.';
+            } catch (e) { return 'Error calling Groq: ' + e.message; }
         }
 
         // ==================== ANIMATION ====================
@@ -1208,6 +1711,7 @@
             renderer.render(scene, camera);
         }
 
+        // Start
         init();
     </script>
 </body>
