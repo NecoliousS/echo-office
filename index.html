@@ -254,6 +254,20 @@
             color: #a855f7;
             transition: opacity 0.5s;
         }
+        #loader .progress {
+            width: 200px;
+            height: 4px;
+            background: #1a1a2e;
+            border-radius: 2px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+        #loader .progress-bar {
+            height: 100%;
+            background: #7c3aed;
+            width: 0%;
+            transition: width 0.2s;
+        }
 
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
@@ -262,8 +276,9 @@
 <body>
 
     <div id="loader">
-        <div style="font-size:1.5rem; font-weight:700; margin-bottom:10px;">◆ ECHO</div>
-        <div style="font-size:0.85rem; color:#666;">Loading Office...</div>
+        <div style="font-size:1.5rem; font-weight:700; margin-bottom:6px;">◆ ECHO</div>
+        <div style="font-size:0.85rem; color:#666;" id="loaderText">Loading Office...</div>
+        <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
     </div>
 
     <div class="key-bar">
@@ -315,11 +330,15 @@
 
     <script>
         // ==================== CONFIG ====================
-        const MODEL_URL = 'office.glb';
-        const PLACEMENT_MODE = false; // SET TO TRUE to click and get desk coordinates in console
+        // CHANGE THIS if your file is named something else:
+        const MODEL_URL = 'office_room.glb';
         
-        // Adjust these to match actual desk positions in the model
-        // Enable PLACEMENT_MODE, click where you want each agent, copy coordinates here
+        // If the file is in a different repo/folder, use the full GitHub Pages URL instead:
+        // const MODEL_URL = 'https://necoliouss.github.io/echo-office/office_room.glb';
+        
+        const PLACEMENT_MODE = false; // SET TO TRUE to click and get desk coordinates in console
+
+        // Default desk positions — update these after using PLACEMENT_MODE
         const DESK_POSITIONS = [
             {x: -2.5, y: 0, z: -1.5},   // 0 Director
             {x: 0,    y: 0, z: -1.5},   // 1 Scribe
@@ -333,15 +352,15 @@
         ];
 
         const AGENTS = [
-            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, angle: 0, radius: 3.5, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
-            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, angle: Math.PI * 2 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
-            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, angle: Math.PI * 4 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
-            { name: "Voice", role: "Audio & TTS", color: 0x10b981, angle: Math.PI * 6 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
-            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, angle: Math.PI * 8 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
-            { name: "Post", role: "Captions & Upload", color: 0xec4899, angle: Math.PI * 10 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
-            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, angle: Math.PI * 12 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
-            { name: "Hustle", role: "Website Selling", color: 0xeab308, angle: Math.PI * 14 / 9, radius: 3.5, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
-            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, angle: Math.PI * 16 / 9, radius: 3.5, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
+            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
+            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
+            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, api: "gemini", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
+            { name: "Voice", role: "Audio & TTS", color: 0x10b981, api: "groq", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
+            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, api: "gemini", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
+            { name: "Post", role: "Captions & Upload", color: 0xec4899, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
+            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
+            { name: "Hustle", role: "Website Selling", color: 0xeab308, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
+            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
         ];
 
         // ==================== STATE ====================
@@ -429,7 +448,7 @@
             renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
 
-            // Lights — brighter for realistic office model
+            // Lights
             const ambient = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambient);
 
@@ -445,14 +464,13 @@
 
             // Load Office Model
             const loader = new THREE.GLTFLoader();
+            console.log('Attempting to load:', MODEL_URL);
+            
             loader.load(MODEL_URL, (gltf) => {
                 officeModel = gltf.scene;
                 
-                // Auto-detect and hide roof / duplicate exterior building
+                // Auto-filter roof and duplicate exterior
                 filterModel(officeModel);
-                
-                // Optional: scale or center if needed
-                // officeModel.scale.set(1,1,1);
                 
                 scene.add(officeModel);
                 
@@ -469,7 +487,6 @@
                     agents.push(robot);
                     scene.add(robot.mesh);
                     
-                    // Snap to desk position
                     if (DESK_POSITIONS[i]) {
                         robot.mesh.position.set(
                             DESK_POSITIONS[i].x,
@@ -486,11 +503,15 @@
                 
             }, (xhr) => {
                 const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                document.getElementById('loaderText').textContent = `Loading Office... ${pct}%`;
+                document.getElementById('progressBar').style.width = pct + '%';
                 console.log(pct + '% loaded');
             }, (error) => {
                 console.error('Error loading model:', error);
-                document.getElementById('loader').innerHTML = 
-                    '<div style="color:#ff4444; text-align:center;">Failed to load office.glb<br><span style="color:#666; font-size:0.8rem;">Check filename and path</span></div>';
+                document.getElementById('loaderText').textContent = 'Failed to load office_room.glb';
+                document.getElementById('loaderText').style.color = '#ff4444';
+                document.getElementById('progressBar').style.background = '#ff4444';
+                document.getElementById('progressBar').style.width = '100%';
             });
 
             // Events
@@ -517,7 +538,6 @@
         function filterModel(model) {
             const roofKeywords = ['roof', 'ceiling', 'shell', 'exterior', 'outside', 'cover', 'top', 'shingle', 'awning', 'dome', 'canopy'];
             
-            // Find top-level building-like groups and check if they contain roof parts
             const candidates = [];
             model.children.forEach((child) => {
                 if (child.isGroup || child.isObject3D) {
@@ -537,7 +557,6 @@
                 }
             });
 
-            // If 2+ building groups found, hide the ones with roof (exterior clones)
             if (candidates.length >= 2) {
                 candidates.forEach((c) => {
                     if (c.hasRoof) {
@@ -547,7 +566,6 @@
                 });
             }
 
-            // Also individually hide any mesh with roof/ceiling in its name
             model.traverse((child) => {
                 if (child.isMesh) {
                     const name = child.name.toLowerCase();
@@ -559,7 +577,7 @@
             });
         }
 
-        // ==================== ROBOT (Office Worker Style) ====================
+        // ==================== ROBOT ====================
         class Robot {
             constructor(index, config) {
                 this.index = index;
@@ -568,12 +586,10 @@
                 this.stateTimer = Math.random() * 3;
                 this.targetPos = new THREE.Vector3();
                 this.interactPartner = null;
-                this.hoverOffset = Math.random() * Math.PI * 2;
 
                 this.mesh = this.buildWorker(config);
-                // Fallback position (overridden by init)
-                const startAngle = config.angle + (Math.random() - 0.5) * 0.3;
-                const startR = config.radius + (Math.random() - 0.5) * 0.8;
+                const startAngle = Math.random() * Math.PI * 2;
+                const startR = 3 + Math.random() * 2;
                 this.mesh.position.set(
                     Math.cos(startAngle) * startR,
                     0,
@@ -590,29 +606,24 @@
                 const glowMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
                 const skinMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.7 });
 
-                // Torso (suit jacket look)
                 const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.45, 8), suitMat);
                 torso.position.y = 0.85;
                 torso.castShadow = true;
                 group.add(torso);
 
-                // Chest glow badge
                 const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), glowMat);
                 badge.position.set(0, 0.95, 0.12);
                 badge.rotation.x = Math.PI / 2;
                 group.add(badge);
 
-                // Head (more humanoid)
                 const headGroup = new THREE.Group();
                 headGroup.position.y = 1.18;
                 group.add(headGroup);
 
-                // Face base
                 const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), skinMat);
                 head.castShadow = true;
                 headGroup.add(head);
 
-                // Visor / glasses
                 const visor = new THREE.Mesh(
                     new THREE.BoxGeometry(0.2, 0.05, 0.08),
                     new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 0.6, roughness: 0.1 })
@@ -620,7 +631,6 @@
                 visor.position.set(0, 0.02, 0.1);
                 headGroup.add(visor);
 
-                // Eyes (glowing dots behind visor)
                 const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
                 const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
                 const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -630,12 +640,10 @@
                 rightEye.position.set(0.05, 0.02, 0.13);
                 headGroup.add(rightEye);
 
-                // Neck
                 const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.08), bodyMat);
                 neck.position.y = 1.08;
                 group.add(neck);
 
-                // Shoulders
                 const shoulderGeo = new THREE.SphereGeometry(0.065, 8, 8);
                 const leftShoulder = new THREE.Mesh(shoulderGeo, suitMat);
                 leftShoulder.position.set(-0.2, 1.02, 0);
@@ -644,7 +652,6 @@
                 rightShoulder.position.set(0.2, 1.02, 0);
                 group.add(rightShoulder);
 
-                // Arms
                 const armGeo = new THREE.CylinderGeometry(0.035, 0.03, 0.28);
                 this.leftArm = new THREE.Mesh(armGeo, bodyMat);
                 this.leftArm.position.set(-0.22, 0.82, 0);
@@ -656,7 +663,6 @@
                 this.rightArm.rotation.z = -0.15;
                 group.add(this.rightArm);
 
-                // Hands
                 const handGeo = new THREE.SphereGeometry(0.035, 8, 8);
                 const leftHand = new THREE.Mesh(handGeo, glowMat);
                 leftHand.position.set(0, -0.16, 0);
@@ -666,12 +672,10 @@
                 rightHand.position.set(0, -0.16, 0);
                 this.rightArm.add(rightHand);
 
-                // Hips
                 const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.12, 8), suitMat);
                 hips.position.y = 0.56;
                 group.add(hips);
 
-                // Legs
                 const legGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.38);
                 this.leftLeg = new THREE.Mesh(legGeo, bodyMat);
                 this.leftLeg.position.set(-0.08, 0.31, 0);
@@ -681,7 +685,6 @@
                 this.rightLeg.position.set(0.08, 0.31, 0);
                 group.add(this.rightLeg);
 
-                // Feet
                 const footGeo = new THREE.BoxGeometry(0.07, 0.04, 0.12);
                 const leftFoot = new THREE.Mesh(footGeo, bodyMat);
                 leftFoot.position.set(0, -0.21, 0.03);
@@ -756,7 +759,6 @@
             pickTarget(allAgents) {
                 const r = Math.random();
                 if (r < 0.6) {
-                    // Walk to a random desk
                     const desk = DESK_POSITIONS[Math.floor(Math.random() * DESK_POSITIONS.length)];
                     this.targetPos.set(
                         desk.x + (Math.random()-0.5)*1.0,
@@ -764,14 +766,12 @@
                         desk.z + (Math.random()-0.5)*1.0
                     );
                 } else if (r < 0.9) {
-                    // Wander in office bounds
                     this.targetPos.set(
                         (Math.random() - 0.5) * 8,
                         0,
                         (Math.random() - 0.5) * 8
                     );
                 } else {
-                    // Visit another agent
                     const other = allAgents[Math.floor(Math.random() * allAgents.length)];
                     if (other !== this) {
                         this.targetPos.copy(other.mesh.position);
@@ -873,7 +873,6 @@
         function onClick(e) {
             if (isDragging) return;
 
-            // PLACEMENT MODE: click model to get coordinates
             if (PLACEMENT_MODE && officeModel) {
                 raycaster.setFromCamera(mouse, camera);
                 const modelMeshes = [];
