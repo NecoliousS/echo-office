@@ -88,6 +88,8 @@
             padding: 14px 18px;
             max-width: 280px;
             backdrop-filter: blur(10px);
+            max-height: 320px;
+            overflow-y: auto;
         }
         .task-panel h4 {
             color: #a855f7;
@@ -105,10 +107,27 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .task-item:hover {
+            color: #fff;
+            background: rgba(124,58,237,0.1);
+            border-radius: 4px;
+            padding-left: 4px;
+            margin-left: -4px;
         }
         .task-item:last-child { border-bottom: none; }
         .task-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         .task-time { color: #666; margin-left: auto; font-size: 0.65rem; }
+        .task-delete {
+            opacity: 0;
+            margin-left: 6px;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .task-item:hover .task-delete { opacity: 1; }
 
         .agent-label {
             position: fixed;
@@ -341,6 +360,23 @@
             opacity: 1;
         }
 
+        .add-task-btn {
+            background: none;
+            border: 1px dashed #3a3a60;
+            color: #666;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .add-task-btn:hover {
+            border-color: #7c3aed;
+            color: #a855f7;
+        }
+
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
@@ -368,6 +404,7 @@
     <div class="task-panel" id="taskPanel">
         <h4>⏰ Today's Tasks</h4>
         <div id="taskList"></div>
+        <button class="add-task-btn" onclick="openChat(8)">+ Add / Edit via Clock</button>
     </div>
 
     <div class="zoom-controls">
@@ -421,7 +458,7 @@
             { name: "Post", role: "Captions & Upload", color: 0xec4899, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
             { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
             { name: "Hustle", role: "Website Selling", color: 0xeab308, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
-            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due.` }
+            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due. You also know the current exact time and date.` }
         ];
 
         function hexColor(num) {
@@ -446,6 +483,107 @@
             speed: 0.3,
             keys: {}
         };
+
+        // ==================== TIME & TASKS ====================
+        let currentTime = null;
+        let userTasks = [];
+
+        async function fetchTime() {
+            try {
+                const res = await fetch('https://worldtimeapi.org/api/ip');
+                const data = await res.json();
+                currentTime = new Date(data.datetime);
+                console.log('Server time:', currentTime.toString());
+            } catch (e) {
+                currentTime = new Date();
+                console.log('Fallback to local time:', currentTime.toString());
+            }
+        }
+        fetchTime();
+        // Refresh every 5 minutes
+        setInterval(fetchTime, 300000);
+
+        function getTimeString() {
+            const d = currentTime || new Date();
+            return d.toLocaleString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        }
+
+        function getDayName() {
+            const d = currentTime || new Date();
+            return d.toLocaleDateString('en-US', { weekday: 'long' });
+        }
+
+        function getDateOnly() {
+            const d = currentTime || new Date();
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function isToday(task) {
+            const d = currentTime || new Date();
+            const day = d.getDay(); // 0=Sun, 1=Mon, ...
+            const date = d.getDate();
+
+            if (task.time === '8:00 PM') return true;
+            if (task.time === '12:00 AM') return true;
+            if (task.time === 'Tue/Fri') return day === 2 || day === 5;
+            if (task.time === 'Sun 3PM') return day === 0;
+            if (task.time === 'Wed') return day === 3;
+            if (task.time === 'Bi-weekly') return date % 14 < 7;
+            if (task.time === 'This week') return true;
+            return true;
+        }
+
+        function loadTasks() {
+            const saved = localStorage.getItem('echoTasks');
+            if (saved) {
+                userTasks = JSON.parse(saved);
+            }
+        }
+        loadTasks();
+
+        function saveTasks() {
+            localStorage.setItem('echoTasks', JSON.stringify(userTasks));
+            updateTasks();
+        }
+
+        function deleteTask(index) {
+            userTasks.splice(index, 1);
+            saveTasks();
+        }
+
+        const defaultTasks = [
+            { task: "Ring Cam short", time: "8:00 PM", color: "#7c3aed" },
+            { task: "iMessage Horror", time: "12:00 AM", color: "#3b82f6" },
+            { task: "Trail Cam / Deep Sea", time: "Tue/Fri", color: "#06b6d4" },
+            { task: "The Simulation", time: "Sun 3PM", color: "#10b981" },
+            { task: "Lost Media doc", time: "Bi-weekly", color: "#f59e0b" },
+            { task: "Restoration video", time: "Wed", color: "#ec4899" },
+            { task: "Find 3 properties", time: "This week", color: "#f97316" },
+            { task: "Send 5 website pitches", time: "This week", color: "#eab308" }
+        ];
+
+        function updateTasks() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            const tasks = userTasks.length > 0 ? userTasks : defaultTasks;
+            tasks.forEach((t, i) => {
+                const div = document.createElement('div');
+                div.className = 'task-item';
+                const isDue = isToday(t);
+                const opacity = isDue ? '1' : '0.4';
+                div.style.opacity = opacity;
+                div.innerHTML = `<span class="task-dot" style="background:${t.color}"></span><span>${t.task}</span><span class="task-time">${t.time}</span><span class="task-delete" onclick="event.stopPropagation();deleteTask(${i})">✕</span>`;
+                list.appendChild(div);
+            });
+        }
+        updateTasks();
 
         document.getElementById('geminiKey').value = localStorage.getItem('geminiKey') || '';
         document.getElementById('groqKey').value = localStorage.getItem('groqKey') || '';
@@ -517,31 +655,6 @@
         }
         initSidebar();
 
-        let userTasks = [];
-        const defaultTasks = [
-            { task: "Ring Cam short", time: "8:00 PM", color: "#7c3aed" },
-            { task: "iMessage Horror", time: "12:00 AM", color: "#3b82f6" },
-            { task: "Trail Cam / Deep Sea", time: "Tue/Fri", color: "#06b6d4" },
-            { task: "The Simulation", time: "Sun 3PM", color: "#10b981" },
-            { task: "Lost Media doc", time: "Bi-weekly", color: "#f59e0b" },
-            { task: "Restoration video", time: "Wed", color: "#ec4899" },
-            { task: "Find 3 properties", time: "This week", color: "#f97316" },
-            { task: "Send 5 website pitches", time: "This week", color: "#eab308" }
-        ];
-
-        function updateTasks() {
-            const list = document.getElementById('taskList');
-            list.innerHTML = '';
-            const tasks = userTasks.length > 0 ? userTasks : defaultTasks;
-            tasks.forEach(t => {
-                const div = document.createElement('div');
-                div.className = 'task-item';
-                div.innerHTML = `<span class="task-dot" style="background:${t.color}"></span><span>${t.task}</span><span class="task-time">${t.time}</span>`;
-                list.appendChild(div);
-            });
-        }
-        updateTasks();
-
         // ==================== THREE.JS ====================
         function init() {
             const container = document.getElementById('canvas-container');
@@ -579,7 +692,6 @@
             loader.load(MODEL_URL, (gltf) => {
                 officeModel = gltf.scene;
 
-                // 1) Compute original bounds
                 const box = new THREE.Box3().setFromObject(officeModel);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
@@ -587,7 +699,6 @@
                 console.log('Original size:', size.x, size.y, size.z);
                 console.log('Original center:', center.x, center.y, center.z);
 
-                // 2) Scale and center
                 const maxDim = Math.max(size.x, size.y, size.z);
                 const targetSize = 25;
                 const scale = targetSize / maxDim;
@@ -595,13 +706,10 @@
                 officeModel.scale.setScalar(scale);
                 officeModel.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
-                // 3) CRITICAL: update world matrices BEFORE filtering so child bounds are correct
                 officeModel.updateMatrixWorld(true);
 
-                // 4) Filter: hide left building
                 filterBuildings(officeModel);
 
-                // 5) Recompute bounds from ONLY visible meshes (right building)
                 modelBounds = new THREE.Box3();
                 let visibleCount = 0;
                 officeModel.traverse((child) => {
@@ -621,7 +729,6 @@
 
                 scene.add(officeModel);
 
-                // 6) UNIVERSAL FLOOR — large plane so you never see the void below
                 const floorGeo = new THREE.PlaneGeometry(300, 300);
                 const floorMat = new THREE.MeshStandardMaterial({ 
                     color: 0x151525, 
@@ -634,7 +741,6 @@
                 floor.receiveShadow = true;
                 scene.add(floor);
 
-                // 7) Desk positions inside the visible building
                 const min = modelBounds.min;
                 const max = modelBounds.max;
                 const rangeX = max.x - min.x;
@@ -658,7 +764,6 @@
 
                 console.log('Desk positions:', DESK_POSITIONS);
 
-                // 8) Create agents at 0.85 scale
                 AGENTS.forEach((config, i) => {
                     const robot = new Robot(i, config);
                     robot.baseY = FLOOR_Y;
@@ -674,7 +779,6 @@
                     }
                 });
 
-                // 9) Camera inside the building
                 const camX = min.x + rangeX * 0.5;
                 const camZ = min.z + rangeZ * 0.65;
                 freecam.pos.set(camX, FLOOR_Y + 2.8, camZ);
@@ -682,7 +786,6 @@
                 freecam.pitch = -0.2;
                 updateFreecam();
 
-                // Hide loader
                 const loaderEl = document.getElementById('loader');
                 loaderEl.style.opacity = '0';
                 setTimeout(() => loaderEl.style.display = 'none', 500);
@@ -741,7 +844,6 @@
             if (freecam.keys['q'] || freecam.keys[' ']) freecam.pos.y += speed;
             if (freecam.keys['e'] || freecam.keys['shift']) freecam.pos.y -= speed;
 
-            // UNIVERSAL FLOOR: camera can never go below floor + 1.2
             if (modelBounds) {
                 freecam.pos.y = Math.max(FLOOR_Y + 1.2, freecam.pos.y);
             }
@@ -750,7 +852,6 @@
         }
 
         function filterBuildings(model) {
-            // Get world-space bounds of the entire scaled model
             const box = new THREE.Box3().setFromObject(model);
             const centerX = (box.min.x + box.max.x) / 2;
 
@@ -763,7 +864,6 @@
                     const meshBox = new THREE.Box3().setFromObject(child);
                     const meshCenterX = (meshBox.min.x + meshBox.max.x) / 2;
 
-                    // Hide anything whose center is on the left half
                     if (meshCenterX < centerX) {
                         child.visible = false;
                         leftCount++;
@@ -888,7 +988,6 @@
                 rightFoot.position.set(0, -0.21, 0.03);
                 this.rightLeg.add(rightFoot);
 
-                // FIXED: 0.85 scale so agents fit the office proportionally
                 group.scale.setScalar(0.85);
                 return group;
             }
@@ -981,7 +1080,6 @@
                     }
                 }
 
-                // WALL COLLISION: clamp target to stay inside building
                 if (modelBounds) {
                     const pad = 0.6;
                     const min = modelBounds.min;
@@ -1001,7 +1099,6 @@
                 const move = Math.min(dist, 0.8 * delta);
                 this.mesh.position.add(dir.multiplyScalar(move));
 
-                // WALL COLLISION: hard clamp so they never phase through walls
                 if (modelBounds) {
                     const pad = 0.5;
                     const min = modelBounds.min;
@@ -1219,6 +1316,15 @@
             const recent = history.slice(-8);
 
             let context = config.systemPrompt + '\n\n';
+
+            // Inject current time for Clock
+            if (config.name === 'Clock') {
+                context += `CURRENT TIME: ${getTimeString()}\n`;
+                context += `TODAY IS: ${getDayName()}, ${getDateOnly()}\n`;
+                context += `USER TASKS: ${JSON.stringify(userTasks.length > 0 ? userTasks : defaultTasks)}\n`;
+                context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.\n\n`;
+            }
+
             recent.forEach(m => context += `${m.role}: ${m.text}\n`);
             context += `user: ${userMessage}`;
 
@@ -1239,7 +1345,14 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await res.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response';
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response';
+
+                // Check if Clock returned a task action
+                if (activeAgentIndex === 8) {
+                    handleClockAction(text);
+                }
+
+                return text;
             } catch (e) { return 'Error: ' + e.message; }
         }
 
@@ -1257,8 +1370,42 @@
                     })
                 });
                 const data = await res.json();
-                return data.choices?.[0]?.message?.content || 'Empty response';
+                const text = data.choices?.[0]?.message?.content || 'Empty response';
+
+                if (activeAgentIndex === 8) {
+                    handleClockAction(text);
+                }
+
+                return text;
             } catch (e) { return 'Error: ' + e.message; }
+        }
+
+        function handleClockAction(text) {
+            try {
+                // Look for JSON action in the response
+                const jsonMatch = text.match(/\{[^}]*\}/);
+                if (jsonMatch) {
+                    const action = JSON.parse(jsonMatch[0]);
+                    if (action.action === 'add' && action.task) {
+                        userTasks.push({
+                            task: action.task,
+                            time: action.time || 'Anytime',
+                            color: action.color || '#7c3aed'
+                        });
+                        saveTasks();
+                    } else if (action.action === 'remove' && action.index !== undefined) {
+                        if (userTasks.length > 0) {
+                            userTasks.splice(action.index, 1);
+                            saveTasks();
+                        }
+                    } else if (action.action === 'clear') {
+                        userTasks = [];
+                        saveTasks();
+                    }
+                }
+            } catch (e) {
+                // Not a valid action, ignore
+            }
         }
 
         // ==================== ANIMATION ====================
