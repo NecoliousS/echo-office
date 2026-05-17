@@ -269,6 +269,21 @@
             transition: width 0.2s;
         }
 
+        #debug-coord {
+            position: fixed;
+            top: 55px;
+            right: 16px;
+            z-index: 200;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid #7c3aed;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.7rem;
+            color: #a855f7;
+            font-family: monospace;
+            display: none;
+        }
+
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
@@ -281,12 +296,15 @@
         <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
     </div>
 
+    <div id="debug-coord">Click a desk to get coordinates</div>
+
     <div class="key-bar">
         <span class="brand">◆ ECHO</span>
         <input type="password" id="geminiKey" placeholder="Gemini Key">
         <input type="password" id="groqKey" placeholder="Groq Key">
         <input type="password" id="openrouterKey" placeholder="OpenRouter Key (opt)">
         <button onclick="saveKeys()">Save</button>
+        <button onclick="togglePlacement()" id="placeBtn" style="background:#333; margin-left:auto;">Placement: OFF</button>
     </div>
 
     <div class="task-panel" id="taskPanel">
@@ -326,29 +344,25 @@
         </div>
     </div>
 
-    <div class="hint" id="hint">Drag to look around • Click agent to chat</div>
+    <div class="hint" id="hint">Drag to look around • Click agent to chat • Click Placement button to set desk coords</div>
 
     <script>
         // ==================== CONFIG ====================
-        // CHANGE THIS if your file is named something else:
         const MODEL_URL = 'office_room.glb';
-        
-        // If the file is in a different repo/folder, use the full GitHub Pages URL instead:
-        // const MODEL_URL = 'https://necoliouss.github.io/echo-office/office_room.glb';
-        
-        const PLACEMENT_MODE = false; // SET TO TRUE to click and get desk coordinates in console
+        let PLACEMENT_MODE = false;
 
-        // Default desk positions — update these after using PLACEMENT_MODE
-        const DESK_POSITIONS = [
-            {x: -2.5, y: 0, z: -1.5},   // 0 Director
-            {x: 0,    y: 0, z: -1.5},   // 1 Scribe
-            {x: 2.5,  y: 0, z: -1.5},   // 2 Lens
-            {x: -2.5, y: 0, z: 1.5},    // 3 Voice
-            {x: 0,    y: 0, z: 1.5},    // 4 Frame
-            {x: 2.5,  y: 0, z: 1.5},    // 5 Post
-            {x: -1.5, y: 0, z: 3.5},    // 6 Dealer
-            {x: 1.5,  y: 0, z: 3.5},    // 7 Hustle
-            {x: 0,    y: 0, z: 0}       // 8 Clock
+        // These will be updated after you use placement mode
+        // For now, agents spawn at origin until we know real desk positions
+        let DESK_POSITIONS = [
+            {x: 0, y: 0, z: 0},   // 0 Director
+            {x: 0, y: 0, z: 0},   // 1 Scribe
+            {x: 0, y: 0, z: 0},   // 2 Lens
+            {x: 0, y: 0, z: 0},   // 3 Voice
+            {x: 0, y: 0, z: 0},   // 4 Frame
+            {x: 0, y: 0, z: 0},   // 5 Post
+            {x: 0, y: 0, z: 0},   // 6 Dealer
+            {x: 0, y: 0, z: 0},   // 7 Hustle
+            {x: 0, y: 0, z: 0}    // 8 Clock
         ];
 
         const AGENTS = [
@@ -375,6 +389,7 @@
         let cameraAngle = { theta: 0, phi: Math.PI / 2.5 };
         let cameraRadius = 10;
         let cameraTarget = new THREE.Vector3(0, 1.5, 0);
+        let modelBounds = null;
 
         document.getElementById('geminiKey').value = localStorage.getItem('geminiKey') || '';
         document.getElementById('groqKey').value = localStorage.getItem('groqKey') || '';
@@ -390,17 +405,34 @@
             setTimeout(() => event.target.textContent = 'Save', 1000);
         }
 
+        function togglePlacement() {
+            PLACEMENT_MODE = !PLACEMENT_MODE;
+            const btn = document.getElementById('placeBtn');
+            const debug = document.getElementById('debug-coord');
+            if (PLACEMENT_MODE) {
+                btn.textContent = 'Placement: ON';
+                btn.style.background = '#7c3aed';
+                debug.style.display = 'block';
+                document.getElementById('hint').textContent = 'PLACEMENT MODE: Click on a desk to get coordinates. Check console.';
+            } else {
+                btn.textContent = 'Placement: OFF';
+                btn.style.background = '#333';
+                debug.style.display = 'none';
+                document.getElementById('hint').textContent = 'Drag to look around • Click agent to chat';
+            }
+        }
+
         function saveHistory() {
             localStorage.setItem('echoChatHistory', JSON.stringify(chatHistory));
         }
 
         function zoomIn() {
-            cameraRadius = Math.max(4, cameraRadius - 1);
+            cameraRadius = Math.max(2, cameraRadius - 1);
             updateCamera();
         }
 
         function zoomOut() {
-            cameraRadius = Math.min(18, cameraRadius + 1);
+            cameraRadius = Math.min(30, cameraRadius + 1);
             updateCamera();
         }
 
@@ -436,9 +468,9 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a12);
-            scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
+            scene.fog = new THREE.FogExp2(0x0a0a12, 0.008);
 
-            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 500);
             updateCamera();
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -449,17 +481,17 @@
             container.appendChild(renderer.domElement);
 
             // Lights
-            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambient);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-            dirLight.position.set(5, 12, 8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.set(2048, 2048);
             scene.add(dirLight);
 
-            const fillLight = new THREE.DirectionalLight(0xa855f7, 0.15);
-            fillLight.position.set(-5, 4, -5);
+            const fillLight = new THREE.DirectionalLight(0xa855f7, 0.2);
+            fillLight.position.set(-10, 5, -10);
             scene.add(fillLight);
 
             // Load Office Model
@@ -469,7 +501,10 @@
             loader.load(MODEL_URL, (gltf) => {
                 officeModel = gltf.scene;
                 
-                // Auto-filter roof and duplicate exterior
+                // Auto-center and scale the model
+                centerAndScaleModel(officeModel);
+                
+                // Filter roof/exterior
                 filterModel(officeModel);
                 
                 scene.add(officeModel);
@@ -477,24 +512,37 @@
                 // Log all mesh names for debugging
                 console.log('=== MODEL MESHES ===');
                 officeModel.traverse((child) => {
-                    if (child.isMesh) console.log(child.name);
+                    if (child.isMesh) console.log(child.name, 'pos:', child.position);
                 });
                 console.log('====================');
+                console.log('Model bounds:', modelBounds);
+                console.log('Model center:', modelBounds ? modelBounds.getCenter(new THREE.Vector3()) : 'N/A');
 
-                // Create agents at desk positions
+                // Create agents - initially at model center, then spread them
+                const center = modelBounds ? modelBounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0,0,0);
+                
                 AGENTS.forEach((config, i) => {
                     const robot = new Robot(i, config);
                     agents.push(robot);
                     scene.add(robot.mesh);
                     
-                    if (DESK_POSITIONS[i]) {
-                        robot.mesh.position.set(
-                            DESK_POSITIONS[i].x,
-                            DESK_POSITIONS[i].y,
-                            DESK_POSITIONS[i].z
-                        );
-                    }
+                    // Spread agents in a circle around center until we have real desk positions
+                    const angle = (i / AGENTS.length) * Math.PI * 2;
+                    const radius = 3;
+                    robot.mesh.position.set(
+                        center.x + Math.cos(angle) * radius,
+                        center.y,
+                        center.z + Math.sin(angle) * radius
+                    );
                 });
+
+                // Position camera to look at model center
+                cameraTarget.copy(center);
+                cameraTarget.y += 1.5;
+                cameraRadius = modelBounds ? modelBounds.getSize(new THREE.Vector3()).length() * 0.6 : 15;
+                cameraAngle.theta = Math.PI / 4;
+                cameraAngle.phi = Math.PI / 3;
+                updateCamera();
 
                 // Hide loader
                 const loaderEl = document.getElementById('loader');
@@ -522,9 +570,36 @@
             renderer.domElement.addEventListener('wheel', onWheel);
             renderer.domElement.addEventListener('click', onClick);
 
-            setTimeout(() => document.getElementById('hint').style.opacity = '0', 6000);
+            setTimeout(() => document.getElementById('hint').style.opacity = '0', 8000);
 
             animate();
+        }
+
+        function centerAndScaleModel(model) {
+            // Compute bounding box
+            const box = new THREE.Box3().setFromObject(model);
+            modelBounds = box;
+            
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            console.log('Original model size:', size);
+            console.log('Original model center:', center);
+            
+            // Center the model at origin
+            model.position.sub(center);
+            
+            // Scale if too big or too small (target ~20 units wide)
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const targetSize = 20;
+            if (maxDim > targetSize * 2 || maxDim < targetSize * 0.1) {
+                const scale = targetSize / maxDim;
+                model.scale.setScalar(scale);
+                console.log('Scaled model by:', scale);
+            }
+            
+            // Recompute bounds after transform
+            modelBounds = new THREE.Box3().setFromObject(model);
         }
 
         function updateCamera() {
@@ -538,6 +613,7 @@
         function filterModel(model) {
             const roofKeywords = ['roof', 'ceiling', 'shell', 'exterior', 'outside', 'cover', 'top', 'shingle', 'awning', 'dome', 'canopy'];
             
+            // Find top-level building-like groups
             const candidates = [];
             model.children.forEach((child) => {
                 if (child.isGroup || child.isObject3D) {
@@ -557,6 +633,7 @@
                 }
             });
 
+            // If 2+ building groups found, hide the ones with roof (exterior clones)
             if (candidates.length >= 2) {
                 candidates.forEach((c) => {
                     if (c.hasRoof) {
@@ -566,6 +643,7 @@
                 });
             }
 
+            // Also individually hide any mesh with roof/ceiling in its name
             model.traverse((child) => {
                 if (child.isMesh) {
                     const name = child.name.toLowerCase();
@@ -588,13 +666,6 @@
                 this.interactPartner = null;
 
                 this.mesh = this.buildWorker(config);
-                const startAngle = Math.random() * Math.PI * 2;
-                const startR = 3 + Math.random() * 2;
-                this.mesh.position.set(
-                    Math.cos(startAngle) * startR,
-                    0,
-                    Math.sin(startAngle) * startR
-                );
                 this.mesh.userData = { agentIndex: index };
             }
 
@@ -759,17 +830,20 @@
             pickTarget(allAgents) {
                 const r = Math.random();
                 if (r < 0.6) {
+                    // Walk to a random desk position
                     const desk = DESK_POSITIONS[Math.floor(Math.random() * DESK_POSITIONS.length)];
                     this.targetPos.set(
-                        desk.x + (Math.random()-0.5)*1.0,
+                        desk.x + (Math.random()-0.5)*0.5,
                         desk.y,
-                        desk.z + (Math.random()-0.5)*1.0
+                        desk.z + (Math.random()-0.5)*0.5
                     );
                 } else if (r < 0.9) {
+                    // Wander near center
+                    const center = modelBounds ? modelBounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0,0,0);
                     this.targetPos.set(
-                        (Math.random() - 0.5) * 8,
-                        0,
-                        (Math.random() - 0.5) * 8
+                        center.x + (Math.random() - 0.5) * 10,
+                        center.y,
+                        center.z + (Math.random() - 0.5) * 10
                     );
                 } else {
                     const other = allAgents[Math.floor(Math.random() * allAgents.length)];
@@ -866,13 +940,14 @@
 
         function onMouseUp() { isMouseDown = false; }
         function onWheel(e) {
-            cameraRadius = Math.max(4, Math.min(18, cameraRadius + e.deltaY * 0.01));
+            cameraRadius = Math.max(2, Math.min(30, cameraRadius + e.deltaY * 0.01));
             updateCamera();
         }
 
         function onClick(e) {
             if (isDragging) return;
 
+            // PLACEMENT MODE: click model to get coordinates
             if (PLACEMENT_MODE && officeModel) {
                 raycaster.setFromCamera(mouse, camera);
                 const modelMeshes = [];
@@ -880,12 +955,16 @@
                 const intersects = raycaster.intersectObjects(modelMeshes, false);
                 if (intersects.length > 0) {
                     const p = intersects[0].point;
-                    const coord = `{x: ${p.x.toFixed(2)}, y: ${p.y.toFixed(2)}, z: ${p.z.toFixed(2)}}`;
-                    console.log('DESK_POSITION:', coord);
+                    const coordStr = `{x: ${p.x.toFixed(3)}, y: ${p.y.toFixed(3)}, z: ${p.z.toFixed(3)}}`;
+                    console.log('DESK_POSITION:', coordStr);
+                    
+                    const debug = document.getElementById('debug-coord');
+                    debug.textContent = coordStr;
+                    debug.style.display = 'block';
+                    
                     const hint = document.getElementById('hint');
-                    hint.textContent = `Copied: ${coord}`;
+                    hint.textContent = `Copied: ${coordStr} — paste into DESK_POSITIONS array`;
                     hint.style.opacity = '1';
-                    setTimeout(() => { if (!PLACEMENT_MODE) hint.style.opacity = '0'; }, 4000);
                     return;
                 }
             }
