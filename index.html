@@ -88,7 +88,7 @@
             padding: 14px 18px;
             max-width: 280px;
             backdrop-filter: blur(10px);
-            max-height: 320px;
+            max-height: 340px;
             overflow-y: auto;
         }
         .task-panel h4 {
@@ -126,8 +126,12 @@
             color: #ff4444;
             cursor: pointer;
             font-size: 0.7rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: opacity 0.2s;
         }
         .task-item:hover .task-delete { opacity: 1; }
+        .task-delete:hover { background: rgba(255,68,68,0.2); }
 
         .agent-label {
             position: fixed;
@@ -450,15 +454,15 @@
         let FLOOR_Y = 0;
 
         const AGENTS = [
-            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, api: "gemini", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
-            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, api: "groq", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
-            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, api: "gemini", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
-            { name: "Voice", role: "Audio & TTS", color: 0x10b981, api: "groq", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
-            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, api: "gemini", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
-            { name: "Post", role: "Captions & Upload", color: 0xec4899, api: "groq", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
-            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, api: "gemini", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
-            { name: "Hustle", role: "Website Selling", color: 0xeab308, api: "groq", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
-            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, api: "gemini", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due. You also know the current exact time and date.` }
+            { name: "Director", role: "Strategy & Scheduling", color: 0x7c3aed, api: "gemini", intro: "Yo, I'm Director. I run the whole operation — content calendars, priorities, deadlines. You need a plan? I got you. Let's get this shit rolling.", systemPrompt: `You are Director. You manage 6 content channels: Ring Cam (daily 8PM), iMessage Horror (every other midnight), Trail Cam (Tue/Fri), The Simulation (Sun 3PM), Lost Media (bi-weekly), Restoration (Wed). You also coordinate with Dealer (real estate research) and Hustle (website pitches). When asked, give clear priorities and schedules.` },
+            { name: "Scribe", role: "Scripts & Copy", color: 0x3b82f6, api: "groq", intro: "What's good, I'm Scribe. I write the words that hit — scripts, hooks, captions, all that. Tell me what channel and I'll cook something up. Let's write.", systemPrompt: `You are Scribe. You write scripts, hooks, and copy for all 6 content channels. You specialize in fake authenticity — typos, panic, broadcast interference, iMessage screenshots. Ask which channel and episode when writing.` },
+            { name: "Lens", role: "Video & Visuals", color: 0x06b6d4, api: "gemini", intro: "Lens here. I handle all the visual shit — video tools, image prompts, thumbnails. Need a shot list or a prompt for AI video? I'm your guy. Let's create.", systemPrompt: `You are Lens. You recommend video tools and write image prompts. Free tools: Google AI Studio/Veo 3.1 (best, no watermark), PixVerse (60/day), Kling AI, Hailuo AI, CapCut (assembly). Thumbnails: Pollinations.ai (unlimited, no key), Canva. Ask which channel for specific prompts.` },
+            { name: "Voice", role: "Audio & TTS", color: 0x10b981, api: "groq", intro: "Voice in the building. I handle audio — TTS recommendations, voiceover scripts, sound design. Need that creepy narrator voice or a clean read? Hit me. Let's sound good.", systemPrompt: `You are Voice. You recommend TTS tools and write voiceover scripts with sound cues. Free tools: AnySpeech (unlimited, no signup), TTSMaker (free), ElevenLabs (10k chars/month, best quality), Browser Web Speech API (instant). Ask which channel for audio direction.` },
+            { name: "Frame", role: "Thumbnails & Design", color: 0xf59e0b, api: "gemini", intro: "Frame here. I make shit look good — thumbnails, graphics, visual identity. I can generate Pollinations links on the spot. Need a banger thumbnail? Let's design.", systemPrompt: `You are Frame. You generate thumbnails via Pollinations.ai and recommend design tools. Free: Pollinations (direct URL generation), Canva, ytZolo. Ask which channel for thumbnail strategy and I'll generate a clickable Pollinations link.` },
+            { name: "Post", role: "Captions & Upload", color: 0xec4899, api: "groq", intro: "Post reporting for duty. I write titles, captions, hashtags, and pinned comments. I also know the best free schedulers. Ready to post? Let's go live.", systemPrompt: `You are Post. You write titles, captions, hashtags, and pinned comments for all 6 channels. Free schedulers: Later (limited), Buffer (3 channels), YouTube Studio, TikTok Studio. Ask which channel for the full posting package.` },
+            { name: "Dealer", role: "Real Estate Wholesaling", color: 0xf97316, api: "gemini", intro: "Dealer here. I find properties, analyze deals, and know the wholesale game. Driving for dollars, courthouse records, cash buyers — I got the playbook. Let's find a deal.", systemPrompt: `You are Dealer. You help with real estate wholesaling. You know: Zillow (zillow.com) for finding properties, basic wholesale contract principles (assignment clause, earnest money), and that you need to find cash buyers/hedge funds to sell contracts to. You're in research phase — help the user learn and find their first deal. Suggest: driving for dollars, courthouse records, networking with investors.` },
+            { name: "Hustle", role: "Website Selling", color: 0xeab308, api: "groq", intro: "Hustle in the house. I help you sell websites to businesses that don't have them. Cold emails, pricing, portfolio building — I know how to close. Let's get paid.", systemPrompt: `You are Hustle. You help sell websites to businesses without them. Tools: ClientFinder.com (finds businesses without websites). For coding: GitHub Copilot, Replit, CodePen, v0.dev, Bolt.new. Outreach: cold email templates, pricing ($500 basic, $1200 premium), portfolio building. Help the user land their first client.` },
+            { name: "Clock", role: "Reminders & Schedule", color: 0xe5e7eb, api: "gemini", intro: "Clock here, always on time. I track your schedule, remind you what's due, and keep your task list straight. Tell me what you need done and when — I'll remember. Let's get organized.", systemPrompt: `You are Clock. You track all schedules and remind the user what to do. When the user tells you a new schedule or task, acknowledge it and tell them you'll remember. You can update the task list. Default: Ring Cam daily 8PM, iMessage every other midnight, Trail Cam Tue/Fri, Simulation Sun 3PM, Lost Media bi-weekly, Restoration Wed, Real Estate research ongoing, Website pitches 5/week. When asked "what do I do today," list everything due. You also know the current exact time and date.` }
         ];
 
         function hexColor(num) {
@@ -500,7 +504,6 @@
             }
         }
         fetchTime();
-        // Refresh every 5 minutes
         setInterval(fetchTime, 300000);
 
         function getTimeString() {
@@ -527,7 +530,7 @@
 
         function isToday(task) {
             const d = currentTime || new Date();
-            const day = d.getDay(); // 0=Sun, 1=Mon, ...
+            const day = d.getDay();
             const date = d.getDate();
 
             if (task.time === '8:00 PM') return true;
@@ -579,7 +582,8 @@
                 const isDue = isToday(t);
                 const opacity = isDue ? '1' : '0.4';
                 div.style.opacity = opacity;
-                div.innerHTML = `<span class="task-dot" style="background:${t.color}"></span><span>${t.task}</span><span class="task-time">${t.time}</span><span class="task-delete" onclick="event.stopPropagation();deleteTask(${i})">✕</span>`;
+                // FIXED: deleteTask is now a global function, onclick works
+                div.innerHTML = `<span class="task-dot" style="background:${t.color}"></span><span>${t.task}</span><span class="task-time">${t.time}</span><span class="task-delete" onclick="event.stopPropagation(); window.deleteTask(${i})">✕</span>`;
                 list.appendChild(div);
             });
         }
@@ -1264,8 +1268,9 @@
             if (!chatHistory[key]) chatHistory[key] = [];
             chatHistory[key].forEach(msg => appendMessage(msg.role, msg.text, false));
 
+            // FIXED: Always show the intro message first if chat is empty
             if (chatHistory[key].length === 0) {
-                appendMessage('agent', `Hey, I'm ${config.name}. ${config.role}. What do you need today?`, false);
+                appendMessage('agent', config.intro, false);
             }
         }
 
@@ -1317,7 +1322,6 @@
 
             let context = config.systemPrompt + '\n\n';
 
-            // Inject current time for Clock
             if (config.name === 'Clock') {
                 context += `CURRENT TIME: ${getTimeString()}\n`;
                 context += `TODAY IS: ${getDayName()}, ${getDateOnly()}\n`;
@@ -1347,7 +1351,6 @@
                 const data = await res.json();
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response';
 
-                // Check if Clock returned a task action
                 if (activeAgentIndex === 8) {
                     handleClockAction(text);
                 }
@@ -1382,7 +1385,6 @@
 
         function handleClockAction(text) {
             try {
-                // Look for JSON action in the response
                 const jsonMatch = text.match(/\{[^}]*\}/);
                 if (jsonMatch) {
                     const action = JSON.parse(jsonMatch[0]);
