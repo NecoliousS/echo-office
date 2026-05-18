@@ -410,6 +410,7 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 
@@ -588,6 +589,9 @@
             const saved = localStorage.getItem('echoTasks');
             if (saved) {
                 userTasks = JSON.parse(saved);
+            } else {
+                userTasks = [...defaultTasks];
+                saveTasks();
             }
         }
         loadTasks();
@@ -598,10 +602,6 @@
         }
 
         function deleteTask(index) {
-            // If userTasks is empty, copy defaults first so delete actually works
-            if (userTasks.length === 0) {
-                userTasks = [...defaultTasks];
-            }
             userTasks.splice(index, 1);
             saveTasks();
         }
@@ -627,8 +627,7 @@
         function updateTasks() {
             const list = document.getElementById('taskList');
             list.innerHTML = '';
-            const tasks = userTasks.length > 0 ? userTasks : defaultTasks;
-            tasks.forEach((t, i) => {
+            userTasks.forEach((t, i) => {
                 const div = document.createElement('div');
                 div.className = 'task-item';
                 const isDue = isToday(t);
@@ -642,7 +641,11 @@
 
         document.getElementById('geminiKey').value = localStorage.getItem('geminiKey') || '';
         document.getElementById('groqKey').value = localStorage.getItem('groqKey') || '';
-        document.getElementById('openrouterKey').value = localStorage.getItem('openrouterKey') || '';
+        document.getElementById('openrouterKey').value = localStorage.getItem('openrouterKey') || DEFAULT_KEYS.openrouter;
+        // Pre-seed new keys into localStorage if not present
+        if (!localStorage.getItem('openweather')) localStorage.setItem('openweather', DEFAULT_KEYS.openweather);
+        if (!localStorage.getItem('newsapi')) localStorage.setItem('newsapi', DEFAULT_KEYS.newsapi);
+        if (!localStorage.getItem('huggingface')) localStorage.setItem('huggingface', DEFAULT_KEYS.huggingface);
         const savedHistory = localStorage.getItem('echoChatHistory');
         if (savedHistory) chatHistory = JSON.parse(savedHistory);
 
@@ -709,6 +712,130 @@
             });
         }
         initSidebar();
+
+
+        // ==================== API TOOLS ====================
+        const DEFAULT_KEYS = {
+            openweather: '001d2756fa2efebcca4893f59bec4380',
+            newsapi: '7f32a84636e54372922f84a12e512306',
+            openrouter: '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',
+            huggingface: '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'
+        };
+
+        function getKey(name) {
+            return localStorage.getItem(name) || DEFAULT_KEYS[name] || '';
+        }
+
+        const TOOLS = {
+            async get_weather({ city }) {
+                const key = getKey('openweather');
+                const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=imperial`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+                return `${data.name}: ${data.weather[0].description}, ${Math.round(data.main.temp)}°F, humidity ${data.main.humidity}%, wind ${data.wind.speed} mph`;
+            },
+            async get_forecast({ lat, lon }) {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                const data = await res.json();
+                return `Current: ${data.current_weather.temperature}°F, wind ${data.current_weather.windspeed} mph. Daily max: ${data.daily?.temperature_2m_max?.[0]}°F, min: ${data.daily?.temperature_2m_min?.[0]}°F`;
+            },
+            async get_news({ query }) {
+                const key = getKey('newsapi');
+                const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${key}&pageSize=3&sortBy=publishedAt`);
+                const data = await res.json();
+                if (data.status !== 'ok') throw new Error(data.message);
+                return data.articles.map((a, i) => `${i+1}. ${a.title} (${a.source.name}) — ${a.description || 'No description'}`).join('\n');
+            },
+            async get_quote() {
+                const res = await fetch('https://zenquotes.io/api/today');
+                const data = await res.json();
+                return `"${data[0].q}" — ${data[0].a}`;
+            },
+            async get_location() {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                return `City: ${data.city}, Region: ${data.region}, Country: ${data.country_name}, Lat: ${data.latitude}, Lon: ${data.longitude}, ZIP: ${data.postal}`;
+            },
+            async get_dictionary({ word }) {
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error('Word not found');
+                const def = data[0].meanings[0].definitions[0];
+                return `${data[0].word}: ${def.definition} (${data[0].meanings[0].partOfSpeech})`;
+            },
+            async get_currency({ base, target }) {
+                const res = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${target}`);
+                const data = await res.json();
+                return `1 ${base} = ${data.rates[target]} ${target} (as of ${data.date})`;
+            },
+            async search_address({ query }) {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+                const data = await res.json();
+                if (!data.length) throw new Error('No results');
+                return data[0].display_name;
+            },
+            async ovh_chat({ message }) {
+                const res = await fetch('https://oai-endpoint.apps.merci.ohv.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: [{ role: 'user', content: message }] })
+                });
+                const data = await res.json();
+                return data.choices?.[0]?.message?.content || 'No response from OVH';
+            },
+            async huggingface_chat({ message }) {
+                const key = getKey('huggingface');
+                const res = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inputs: `<s>[INST] ${message} [/INST]` })
+                });
+                const data = await res.json();
+                if (Array.isArray(data)) return data[0].generated_text;
+                return data.generated_text || 'No response from HuggingFace';
+            },
+            async openrouter_chat({ message }) {
+                const key = getKey('openrouter');
+                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'mistralai/mistral-7b-instant:free', messages: [{ role: 'user', content: message }] })
+                });
+                const data = await res.json();
+                return data.choices?.[0]?.message?.content || 'No response from OpenRouter';
+            }
+        };
+
+        const TOOLS_DESC = `You have access to these real-time tools. When you need live data (weather, news, location, definitions, currency, quotes, addresses, or extra AI power), respond with ONLY a JSON object like {"tool":"get_weather","params":{"city":"Miami"}} and nothing else. I will execute it and return the result for you to use in your final answer.
+
+Available tools (all free, some need no key):
+- get_weather({city}) → Current weather (OpenWeather). Use for any weather question.
+- get_forecast({lat, lon}) → Weather forecast (Open-Meteo, zero-key). Use for forecasts after getting location.
+- get_news({query}) → Top 3 news headlines (NewsAPI). Use for current events.
+- get_quote() → Daily inspirational quote (ZenQuotes, zero-key).
+- get_location() → Detect user's city from IP (ipapi.co, zero-key). Use when asked "where am I" or for local weather.
+- get_dictionary({word}) → Word definition (Free Dictionary, zero-key).
+- get_currency({base, target}) → Currency rates (Frankfurter, zero-key). Example: {"tool":"get_currency","params":{"base":"USD","target":"EUR"}}
+- search_address({query}) → Address lookup (Nominatim/OpenStreetMap, zero-key).
+- ovh_chat({message}) → Emergency AI fallback (OVHcloud, zero-key).
+- huggingface_chat({message}) → AI via HuggingFace Mistral 7B.
+- openrouter_chat({message}) → AI via OpenRouter Mistral 7B free tier.
+
+If you don't need a tool, just answer normally. If the user asks something requiring real-time info, YOU MUST use the tool first.`;
+
+        function extractToolCall(text) {
+            const jsonMatches = text.match(/\{[\s\S]*?\}/g);
+            if (!jsonMatches) return null;
+            for (const match of jsonMatches) {
+                try {
+                    const obj = JSON.parse(match);
+                    if (obj.tool && TOOLS[obj.tool]) {
+                        return { raw: match, call: obj };
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
 
         // ==================== THREE.JS ====================
         function init() {
@@ -1370,26 +1497,50 @@
             const history = chatHistory[key] || [];
             const recent = history.slice(-8);
 
-            let context = config.systemPrompt + '\n\n';
+            let context = config.systemPrompt + '\n' + TOOLS_DESC + '\n\n';
 
             if (config.name === 'Clock') {
                 context += `CURRENT TIME: ${getTimeString()}\n`;
                 context += `TODAY IS: ${getDayName()}, ${getDateOnly()}\n`;
-                context += `USER TASKS: ${JSON.stringify(userTasks.length > 0 ? userTasks : defaultTasks)}\n`;
+                context += `USER TASKS: ${JSON.stringify(userTasks)}\n`;
                 context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.\n\n`;
             }
 
             recent.forEach(m => context += `${m.role}: ${m.text}\n`);
             context += `user: ${userMessage}`;
 
+            let response = await callLLM(context, config);
+
+            // Tool calling loop (max 3 rounds)
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const tool = extractToolCall(response);
+                if (!tool) break;
+
+                try {
+                    const result = await TOOLS[tool.call.tool](tool.call.params || {});
+                    const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+                    context += `\n\n[TOOL RESULT - ${tool.call.tool}]: ${resultStr}\nBased on this data, answer the user. Do not output more tool calls unless absolutely necessary.`;
+                    response = await callLLM(context, config);
+                } catch (e) {
+                    context += `\n\n[TOOL ERROR - ${tool.call.tool}]: ${e.message}\nAnswer without this tool's data.`;
+                    response = await callLLM(context, config);
+                }
+            }
+
+            if (activeAgentIndex === 8) {
+                handleClockAction(response);
+            }
+
+            return response || 'No response. Check API key.';
+        }
+
+        async function callLLM(context, config) {
             if (config.api === 'gemini') {
                 return await callGemini(context);
             } else {
                 return await callGroq(context, config.systemPrompt);
             }
-        }
-
-        async function callGemini(prompt) {
+        }async function callGemini(prompt) {
             const key = localStorage.getItem('geminiKey');
             if (!key) return 'Error: No Gemini key saved. Paste it in the top bar and hit Save.';
             try {
@@ -1448,24 +1599,29 @@
 
         function handleClockAction(text) {
             try {
-                const jsonMatch = text.match(/\{[^}]*\}/);
-                if (jsonMatch) {
-                    const action = JSON.parse(jsonMatch[0]);
-                    if (action.action === 'add' && action.task) {
-                        userTasks.push({
-                            task: action.task,
-                            time: action.time || 'Anytime',
-                            color: action.color || '#7c3aed'
-                        });
-                        saveTasks();
-                    } else if (action.action === 'remove' && action.index !== undefined) {
-                        if (userTasks.length > 0) {
-                            userTasks.splice(action.index, 1);
+                const matches = text.match(/\{[\s\S]*?"action"[\s\S]*?\}/g);
+                if (matches) {
+                    for (const match of matches) {
+                        const action = JSON.parse(match);
+                        if (action.action === 'add' && action.task) {
+                            userTasks.push({
+                                task: action.task,
+                                time: action.time || 'Anytime',
+                                color: action.color || '#7c3aed'
+                            });
                             saveTasks();
+                            return;
+                        } else if (action.action === 'remove' && action.index !== undefined) {
+                            if (userTasks.length > 0 && action.index >= 0 && action.index < userTasks.length) {
+                                userTasks.splice(action.index, 1);
+                                saveTasks();
+                                return;
+                            }
+                        } else if (action.action === 'clear') {
+                            userTasks = [];
+                            saveTasks();
+                            return;
                         }
-                    } else if (action.action === 'clear') {
-                        userTasks = [];
-                        saveTasks();
                     }
                 }
             } catch (e) {
