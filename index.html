@@ -88,7 +88,7 @@
             padding: 14px 18px;
             max-width: 280px;
             backdrop-filter: blur(10px);
-            max-height: 340px;
+            max-height: 420px;
             overflow-y: auto;
         }
         .task-panel h4 {
@@ -121,7 +121,6 @@
         .task-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         .task-time { color: #666; margin-left: auto; font-size: 0.65rem; }
         .task-delete {
-            opacity: 0;
             margin-left: 6px;
             color: #ff4444;
             cursor: pointer;
@@ -130,7 +129,6 @@
             border-radius: 3px;
             transition: opacity 0.2s;
         }
-        .task-item:hover .task-delete { opacity: 1; }
         .task-delete:hover { background: rgba(255,68,68,0.2); }
 
         .agent-label {
@@ -364,6 +362,32 @@
             opacity: 1;
         }
 
+        .add-task-inline {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        .add-task-inline input {
+            flex: 1;
+            background: #0a0a14;
+            border: 1px solid #1f1f30;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            outline: none;
+        }
+        .add-task-inline input::placeholder { color: #444; }
+        .add-task-inline button {
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
         .add-task-btn {
             background: none;
             border: 1px dashed #3a3a60;
@@ -372,7 +396,7 @@
             border-radius: 6px;
             font-size: 0.7rem;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
             width: 100%;
             transition: all 0.2s;
         }
@@ -384,6 +408,7 @@
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body>
@@ -408,6 +433,11 @@
     <div class="task-panel" id="taskPanel">
         <h4>⏰ Today's Tasks</h4>
         <div id="taskList"></div>
+        <div class="add-task-inline">
+            <input type="text" id="newTaskInput" placeholder="New task..." onkeydown="if(event.key==='Enter')addTaskInline()">
+            <input type="text" id="newTaskTime" placeholder="Time" style="width:70px" onkeydown="if(event.key==='Enter')addTaskInline()">
+            <button onclick="addTaskInline()">+</button>
+        </div>
         <button class="add-task-btn" onclick="openChat(8)">+ Add / Edit via Clock</button>
     </div>
 
@@ -543,6 +573,17 @@
             return true;
         }
 
+        const defaultTasks = [
+            { task: "Ring Cam short", time: "8:00 PM", color: "#7c3aed" },
+            { task: "iMessage Horror", time: "12:00 AM", color: "#3b82f6" },
+            { task: "Trail Cam / Deep Sea", time: "Tue/Fri", color: "#06b6d4" },
+            { task: "The Simulation", time: "Sun 3PM", color: "#10b981" },
+            { task: "Lost Media doc", time: "Bi-weekly", color: "#f59e0b" },
+            { task: "Restoration video", time: "Wed", color: "#ec4899" },
+            { task: "Find 3 properties", time: "This week", color: "#f97316" },
+            { task: "Send 5 website pitches", time: "This week", color: "#eab308" }
+        ];
+
         function loadTasks() {
             const saved = localStorage.getItem('echoTasks');
             if (saved) {
@@ -557,20 +598,31 @@
         }
 
         function deleteTask(index) {
+            // If userTasks is empty, copy defaults first so delete actually works
+            if (userTasks.length === 0) {
+                userTasks = [...defaultTasks];
+            }
             userTasks.splice(index, 1);
             saveTasks();
         }
 
-        const defaultTasks = [
-            { task: "Ring Cam short", time: "8:00 PM", color: "#7c3aed" },
-            { task: "iMessage Horror", time: "12:00 AM", color: "#3b82f6" },
-            { task: "Trail Cam / Deep Sea", time: "Tue/Fri", color: "#06b6d4" },
-            { task: "The Simulation", time: "Sun 3PM", color: "#10b981" },
-            { task: "Lost Media doc", time: "Bi-weekly", color: "#f59e0b" },
-            { task: "Restoration video", time: "Wed", color: "#ec4899" },
-            { task: "Find 3 properties", time: "This week", color: "#f97316" },
-            { task: "Send 5 website pitches", time: "This week", color: "#eab308" }
-        ];
+        function addTaskInline() {
+            const input = document.getElementById('newTaskInput');
+            const timeInput = document.getElementById('newTaskTime');
+            const task = input.value.trim();
+            if (!task) return;
+            if (userTasks.length === 0) {
+                userTasks = [...defaultTasks];
+            }
+            userTasks.push({
+                task: task,
+                time: timeInput.value || 'Anytime',
+                color: '#7c3aed'
+            });
+            input.value = '';
+            timeInput.value = '';
+            saveTasks();
+        }
 
         function updateTasks() {
             const list = document.getElementById('taskList');
@@ -582,7 +634,6 @@
                 const isDue = isToday(t);
                 const opacity = isDue ? '1' : '0.4';
                 div.style.opacity = opacity;
-                // FIXED: deleteTask is now a global function, onclick works
                 div.innerHTML = `<span class="task-dot" style="background:${t.color}"></span><span>${t.task}</span><span class="task-time">${t.time}</span><span class="task-delete" onclick="event.stopPropagation(); window.deleteTask(${i})">✕</span>`;
                 list.appendChild(div);
             });
@@ -1268,7 +1319,6 @@
             if (!chatHistory[key]) chatHistory[key] = [];
             chatHistory[key].forEach(msg => appendMessage(msg.role, msg.text, false));
 
-            // FIXED: Always show the intro message first if chat is empty
             if (chatHistory[key].length === 0) {
                 appendMessage('agent', config.intro, false);
             }
@@ -1335,13 +1385,13 @@
             if (config.api === 'gemini') {
                 return await callGemini(context);
             } else {
-                return await callGroq(context);
+                return await callGroq(context, config.systemPrompt);
             }
         }
 
         async function callGemini(prompt) {
             const key = localStorage.getItem('geminiKey');
-            if (!key) return 'Error: No Gemini key saved.';
+            if (!key) return 'Error: No Gemini key saved. Paste it in the top bar and hit Save.';
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
                     method: 'POST',
@@ -1349,6 +1399,11 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await res.json();
+
+                if (!res.ok) {
+                    return `Gemini Error (${res.status}): ${data.error?.message || JSON.stringify(data)}`;
+                }
+
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Empty response';
 
                 if (activeAgentIndex === 8) {
@@ -1359,20 +1414,28 @@
             } catch (e) { return 'Error: ' + e.message; }
         }
 
-        async function callGroq(prompt) {
+        async function callGroq(prompt, systemPrompt) {
             const key = localStorage.getItem('groqKey');
-            if (!key) return 'Error: No Groq key saved.';
+            if (!key) return 'Error: No Groq key saved. Paste it in the top bar and hit Save.';
             try {
                 const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'llama3-8b-8192',
-                        messages: [{ role: 'system', content: 'You are a helpful assistant.' }, { role: 'user', content: prompt }],
+                        model: 'llama-3.1-8b-instant',
+                        messages: [
+                            { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                            { role: 'user', content: prompt }
+                        ],
                         temperature: 0.7
                     })
                 });
                 const data = await res.json();
+
+                if (!res.ok) {
+                    return `Groq Error (${res.status}): ${data.error?.message || JSON.stringify(data)}`;
+                }
+
                 const text = data.choices?.[0]?.message?.content || 'Empty response';
 
                 if (activeAgentIndex === 8) {
