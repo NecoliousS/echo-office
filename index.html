@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Echo Office</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -478,7 +479,8 @@
     <div class="hint" id="hint">WASD to move • Mouse drag to look • Click agent to chat</div>
 
     <script>
-                let PLACEMENT_MODE = false;
+        const MODEL_URL = 'office_room.glb';
+        let PLACEMENT_MODE = false;
         let DESK_POSITIONS = [];
         let FLOOR_Y = 0;
 
@@ -640,7 +642,6 @@
         document.getElementById('geminiKey').value = localStorage.getItem('geminiKey') || '';
         document.getElementById('groqKey').value = localStorage.getItem('groqKey') || '';
         document.getElementById('openrouterKey').value = localStorage.getItem('openrouterKey') || DEFAULT_KEYS.openrouter;
-        // Pre-seed new keys into localStorage if not present
         if (!localStorage.getItem('openweather')) localStorage.setItem('openweather', DEFAULT_KEYS.openweather);
         if (!localStorage.getItem('newsapi')) localStorage.setItem('newsapi', DEFAULT_KEYS.newsapi);
         if (!localStorage.getItem('huggingface')) localStorage.setItem('huggingface', DEFAULT_KEYS.huggingface);
@@ -711,132 +712,6 @@
         }
         initSidebar();
 
-
-        // ==================== API TOOLS ====================
-        const DEFAULT_KEYS = {
-            openweather: '001d2756fa2efebcca4893f59bec4380',
-            newsapi: '7f32a84636e54372922f84a12e512306',
-            openrouter: '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',
-            huggingface: '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'
-        };
-
-        function getKey(name) {
-            return localStorage.getItem(name) || DEFAULT_KEYS[name] || '';
-        }
-
-        const TOOLS = {
-            async get_weather({ city }) {
-                const key = getKey('openweather');
-                const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=imperial`);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message);
-                return `${data.name}: ${data.weather[0].description}, ${Math.round(data.main.temp)}°F, humidity ${data.main.humidity}%, wind ${data.wind.speed} mph`;
-            },
-            async get_forecast({ lat, lon }) {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
-                const data = await res.json();
-                return `Current: ${data.current_weather.temperature}°F, wind ${data.current_weather.windspeed} mph. Daily max: ${data.daily?.temperature_2m_max?.[0]}°F, min: ${data.daily?.temperature_2m_min?.[0]}°F`;
-            },
-            async get_news({ query }) {
-                const key = getKey('newsapi');
-                const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${key}&pageSize=3&sortBy=publishedAt`);
-                const data = await res.json();
-                if (data.status !== 'ok') throw new Error(data.message);
-                return data.articles.map((a, i) => `${i+1}. ${a.title} (${a.source.name}) — ${a.description || 'No description'}`).join('\n');
-            },
-            async get_quote() {
-                const res = await fetch('https://zenquotes.io/api/today');
-                const data = await res.json();
-                return `"${data[0].q}" — ${data[0].a}`;
-            },
-            async get_location() {
-                const res = await fetch('https://ipapi.co/json/');
-                const data = await res.json();
-                return `City: ${data.city}, Region: ${data.region}, Country: ${data.country_name}, Lat: ${data.latitude}, Lon: ${data.longitude}, ZIP: ${data.postal}`;
-            },
-            async get_dictionary({ word }) {
-                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-                const data = await res.json();
-                if (!res.ok) throw new Error('Word not found');
-                const def = data[0].meanings[0].definitions[0];
-                return `${data[0].word}: ${def.definition} (${data[0].meanings[0].partOfSpeech})`;
-            },
-            async get_currency({ base, target }) {
-                const res = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${target}`);
-                const data = await res.json();
-                return `1 ${base} = ${data.rates[target]} ${target} (as of ${data.date})`;
-            },
-            async search_address({ query }) {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
-                const data = await res.json();
-                if (!data.length) throw new Error('No results');
-                return data[0].display_name;
-            },
-            async ovh_chat({ message }) {
-                const res = await fetch('https://oai-endpoint.apps.merci.ohv.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: [{ role: 'user', content: message }] })
-                });
-                const data = await res.json();
-                return data.choices?.[0]?.message?.content || 'No response from OVH';
-            },
-            async huggingface_chat({ message }) {
-                const key = getKey('huggingface');
-                const res = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ inputs: `<s>[INST] ${message} [/INST]` })
-                });
-                const data = await res.json();
-                if (Array.isArray(data)) return data[0].generated_text;
-                return data.generated_text || 'No response from HuggingFace';
-            },
-            async openrouter_chat({ message }) {
-                const key = getKey('openrouter');
-                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: 'mistralai/mistral-7b-instant:free', messages: [{ role: 'user', content: message }] })
-                });
-                const data = await res.json();
-                return data.choices?.[0]?.message?.content || 'No response from OpenRouter';
-            }
-        };
-
-        const TOOLS_DESC = `You have access to these real-time tools. When you need live data (weather, news, location, definitions, currency, quotes, addresses, or extra AI power), respond with ONLY a JSON object like {"tool":"get_weather","params":{"city":"Miami"}} and nothing else. I will execute it and return the result for you to use in your final answer.
-
-Available tools (all free, some need no key):
-- get_weather({city}) → Current weather (OpenWeather). Use for any weather question.
-- get_forecast({lat, lon}) → Weather forecast (Open-Meteo, zero-key). Use for forecasts after getting location.
-- get_news({query}) → Top 3 news headlines (NewsAPI). Use for current events.
-- get_quote() → Daily inspirational quote (ZenQuotes, zero-key).
-- get_location() → Detect user's city from IP (ipapi.co, zero-key). Use when asked "where am I" or for local weather.
-- get_dictionary({word}) → Word definition (Free Dictionary, zero-key).
-- get_currency({base, target}) → Currency rates (Frankfurter, zero-key). Example: {"tool":"get_currency","params":{"base":"USD","target":"EUR"}}
-- search_address({query}) → Address lookup (Nominatim/OpenStreetMap, zero-key).
-- ovh_chat({message}) → Emergency AI fallback (OVHcloud, zero-key).
-- huggingface_chat({message}) → AI via HuggingFace Mistral 7B.
-- openrouter_chat({message}) → AI via OpenRouter Mistral 7B free tier.
-
-If you don't need a tool, just answer normally. If the user asks something requiring real-time info, YOU MUST use the tool first.`;
-
-        function extractToolCall(text) {
-            const jsonMatches = text.match(/\{[\s\S]*?\}/g);
-            if (!jsonMatches) return null;
-            for (const match of jsonMatches) {
-                try {
-                    const obj = JSON.parse(match);
-                    if (obj.tool && TOOLS[obj.tool]) {
-                        return { raw: match, call: obj };
-                    }
-                } catch (e) {}
-            }
-            return null;
-        }
-
-
-
         // ==================== THREE.JS ====================
         function init() {
             const container = document.getElementById('canvas-container');
@@ -868,92 +743,121 @@ If you don't need a tool, just answer normally. If the user asks something requi
             fillLight.position.set(-10, 5, -10);
             scene.add(fillLight);
 
-            // ===== PROCEDURAL OFFICE (NO GLB) =====
-            const floorGeo = new THREE.PlaneGeometry(300, 300);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x151525, roughness: 0.95, metalness: 0.05 });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.y = -0.02;
-            floor.receiveShadow = true;
-            scene.add(floor);
+            const loader = new THREE.GLTFLoader();
+            console.log('Loading:', MODEL_URL);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.8 });
-            const wallH = 4, wallThick = 0.3, roomW = 18, roomD = 14;
+            loader.load(MODEL_URL, (gltf) => {
+                officeModel = gltf.scene;
 
-            const walls = [
-                { geo: [roomW, wallH, wallThick], pos: [0, wallH/2, -roomD/2] },
-                { geo: [wallThick, wallH, roomD], pos: [-roomW/2, wallH/2, 0] },
-                { geo: [wallThick, wallH, roomD], pos: [roomW/2, wallH/2, 0] },
-                { geo: [roomW, wallH, wallThick], pos: [0, wallH/2, roomD/2] }
-            ];
-            walls.forEach(w => {
-                const mesh = new THREE.Mesh(new THREE.BoxGeometry(...w.geo), wallMat);
-                mesh.position.set(...w.pos);
-                mesh.castShadow = true;
-                scene.add(mesh);
-            });
+                const box = new THREE.Box3().setFromObject(officeModel);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
 
-            const ceil = new THREE.Mesh(
-                new THREE.PlaneGeometry(roomW, roomD),
-                new THREE.MeshStandardMaterial({ color: 0x151525, roughness: 1 })
-            );
-            ceil.rotation.x = Math.PI / 2;
-            ceil.position.y = wallH;
-            scene.add(ceil);
+                console.log('Original size:', size.x, size.y, size.z);
+                console.log('Original center:', center.x, center.y, center.z);
 
-            const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.6 });
-            const chairMat = new THREE.MeshStandardMaterial({ color: 0x1a1a28 });
-            const monitorMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111122 });
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 25;
+                const scale = targetSize / maxDim;
 
-            DESK_POSITIONS = [];
-            const cols = 3, rows = 3, spacingX = 5, spacingZ = 4;
-            for (let i = 0; i < 9; i++) {
-                const col = (i % cols) - 1;
-                const row = Math.floor(i / cols) - 1;
-                const x = col * spacingX;
-                const z = row * spacingZ;
-                DESK_POSITIONS.push({ x, y: 0, z });
+                officeModel.scale.setScalar(scale);
+                officeModel.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
-                const desk = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 1.2), deskMat);
-                desk.position.set(x, 0.4, z);
-                desk.castShadow = true;
-                desk.receiveShadow = true;
-                scene.add(desk);
+                officeModel.updateMatrixWorld(true);
 
-                const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), chairMat);
-                chair.position.set(x, 0.3, z + 1);
-                scene.add(chair);
+                filterBuildings(officeModel);
 
-                const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.05), monitorMat);
-                monitor.position.set(x, 1.1, z - 0.4);
-                scene.add(monitor);
-            }
+                modelBounds = new THREE.Box3();
+                let visibleCount = 0;
+                officeModel.traverse((child) => {
+                    if (child.isMesh && child.visible) {
+                        const childBox = new THREE.Box3().setFromObject(child);
+                        modelBounds.union(childBox);
+                        visibleCount++;
+                    }
+                });
 
-            FLOOR_Y = 0;
-            modelBounds = new THREE.Box3(
-                new THREE.Vector3(-roomW/2 + 1, 0, -roomD/2 + 1),
-                new THREE.Vector3(roomW/2 - 1, wallH, roomD/2 - 1)
-            );
+                console.log('Visible meshes after filter:', visibleCount);
+                console.log('Visible bounds min:', modelBounds.min.x.toFixed(2), modelBounds.min.y.toFixed(2), modelBounds.min.z.toFixed(2));
+                console.log('Visible bounds max:', modelBounds.max.x.toFixed(2), modelBounds.max.y.toFixed(2), modelBounds.max.z.toFixed(2));
 
-            AGENTS.forEach((config, i) => {
-                const robot = new Robot(i, config);
-                robot.baseY = FLOOR_Y;
-                agents.push(robot);
-                scene.add(robot.mesh);
-                if (DESK_POSITIONS[i]) {
-                    robot.mesh.position.set(DESK_POSITIONS[i].x, DESK_POSITIONS[i].y, DESK_POSITIONS[i].z);
+                FLOOR_Y = modelBounds.min.y;
+                console.log('FLOOR_Y:', FLOOR_Y);
+
+                scene.add(officeModel);
+
+                const floorGeo = new THREE.PlaneGeometry(300, 300);
+                const floorMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x151525, 
+                    roughness: 0.95,
+                    metalness: 0.05
+                });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = FLOOR_Y - 0.02;
+                floor.receiveShadow = true;
+                scene.add(floor);
+
+                const min = modelBounds.min;
+                const max = modelBounds.max;
+                const rangeX = max.x - min.x;
+                const rangeZ = max.z - min.z;
+
+                const padX = rangeX * 0.18;
+                const padZ = rangeZ * 0.18;
+                const usableX = rangeX - padX * 2;
+                const usableZ = rangeZ - padZ * 2;
+
+                DESK_POSITIONS = [];
+                const cols = 3;
+                const rows = 3;
+                for (let i = 0; i < 9; i++) {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    const x = min.x + padX + (col / (cols - 1)) * usableX;
+                    const z = min.z + padZ + (row / (rows - 1)) * usableZ;
+                    DESK_POSITIONS.push({ x, y: FLOOR_Y, z });
                 }
+
+                console.log('Desk positions:', DESK_POSITIONS);
+
+                AGENTS.forEach((config, i) => {
+                    const robot = new Robot(i, config);
+                    robot.baseY = FLOOR_Y;
+                    agents.push(robot);
+                    scene.add(robot.mesh);
+
+                    if (DESK_POSITIONS[i]) {
+                        robot.mesh.position.set(
+                            DESK_POSITIONS[i].x,
+                            DESK_POSITIONS[i].y,
+                            DESK_POSITIONS[i].z
+                        );
+                    }
+                });
+
+                const camX = min.x + rangeX * 0.5;
+                const camZ = min.z + rangeZ * 0.65;
+                freecam.pos.set(camX, FLOOR_Y + 2.8, camZ);
+                freecam.yaw = Math.PI;
+                freecam.pitch = -0.2;
+                updateFreecam();
+
+                const loaderEl = document.getElementById('loader');
+                loaderEl.style.opacity = '0';
+                setTimeout(() => loaderEl.style.display = 'none', 500);
+
+            }, (xhr) => {
+                const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                document.getElementById('loaderText').textContent = `Loading Office... ${pct}%`;
+                document.getElementById('progressBar').style.width = pct + '%';
+            }, (error) => {
+                console.error('Error loading model:', error);
+                document.getElementById('loaderText').textContent = 'Failed to load office_room.glb';
+                document.getElementById('loaderText').style.color = '#ff4444';
+                document.getElementById('progressBar').style.background = '#ff4444';
+                document.getElementById('progressBar').style.width = '100%';
             });
-
-            freecam.pos.set(0, 3, 10);
-            freecam.yaw = Math.PI;
-            freecam.pitch = -0.25;
-            updateFreecam();
-
-            // Hide loader immediately
-            const loaderEl = document.getElementById('loader');
-            loaderEl.style.opacity = '0';
-            setTimeout(() => loaderEl.style.display = 'none', 500);
 
             window.addEventListener('resize', onResize);
             renderer.domElement.addEventListener('mousedown', onMouseDown);
@@ -962,10 +866,15 @@ If you don't need a tool, just answer normally. If the user asks something requi
             renderer.domElement.addEventListener('wheel', onWheel);
             renderer.domElement.addEventListener('click', onClick);
 
-            window.addEventListener('keydown', (e) => { freecam.keys[e.key.toLowerCase()] = true; });
-            window.addEventListener('keyup', (e) => { freecam.keys[e.key.toLowerCase()] = false; });
+            window.addEventListener('keydown', (e) => {
+                freecam.keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                freecam.keys[e.key.toLowerCase()] = false;
+            });
 
             setTimeout(() => document.getElementById('hint').style.opacity = '0', 10000);
+
             animate();
         }
 
@@ -1397,7 +1306,130 @@ If you don't need a tool, just answer normally. If the user asks something requi
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // ==================== CHAT ====================
+                // ==================== API TOOLS ====================
+        const DEFAULT_KEYS = {
+            openweather: '001d2756fa2efebcca4893f59bec4380',
+            newsapi: '7f32a84636e54372922f84a12e512306',
+            openrouter: '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',
+            huggingface: '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'
+        };
+
+        function getKey(name) {
+            return localStorage.getItem(name) || DEFAULT_KEYS[name] || '';
+        }
+
+        const TOOLS = {
+            async get_weather({ city }) {
+                const key = getKey('openweather');
+                const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=imperial`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+                return `${data.name}: ${data.weather[0].description}, ${Math.round(data.main.temp)}°F, humidity ${data.main.humidity}%, wind ${data.wind.speed} mph`;
+            },
+            async get_forecast({ lat, lon }) {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                const data = await res.json();
+                return `Current: ${data.current_weather.temperature}°F, wind ${data.current_weather.windspeed} mph. Daily max: ${data.daily?.temperature_2m_max?.[0]}°F, min: ${data.daily?.temperature_2m_min?.[0]}°F`;
+            },
+            async get_news({ query }) {
+                const key = getKey('newsapi');
+                const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${key}&pageSize=3&sortBy=publishedAt`);
+                const data = await res.json();
+                if (data.status !== 'ok') throw new Error(data.message);
+                return data.articles.map((a, i) => `${i+1}. ${a.title} (${a.source.name}) — ${a.description || 'No description'}`).join('\n');
+            },
+            async get_quote() {
+                const res = await fetch('https://zenquotes.io/api/today');
+                const data = await res.json();
+                return `"${data[0].q}" — ${data[0].a}`;
+            },
+            async get_location() {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                return `City: ${data.city}, Region: ${data.region}, Country: ${data.country_name}, Lat: ${data.latitude}, Lon: ${data.longitude}, ZIP: ${data.postal}`;
+            },
+            async get_dictionary({ word }) {
+                const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error('Word not found');
+                const def = data[0].meanings[0].definitions[0];
+                return `${data[0].word}: ${def.definition} (${data[0].meanings[0].partOfSpeech})`;
+            },
+            async get_currency({ base, target }) {
+                const res = await fetch(`https://api.frankfurter.app/latest?from=${base}&to=${target}`);
+                const data = await res.json();
+                return `1 ${base} = ${data.rates[target]} ${target} (as of ${data.date})`;
+            },
+            async search_address({ query }) {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+                const data = await res.json();
+                if (!data.length) throw new Error('No results');
+                return data[0].display_name;
+            },
+            async ovh_chat({ message }) {
+                const res = await fetch('https://oai-endpoint.apps.merci.ohv.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: [{ role: 'user', content: message }] })
+                });
+                const data = await res.json();
+                return data.choices?.[0]?.message?.content || 'No response from OVH';
+            },
+            async huggingface_chat({ message }) {
+                const key = getKey('huggingface');
+                const res = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inputs: `<s>[INST] ${message} [/INST]` })
+                });
+                const data = await res.json();
+                if (Array.isArray(data)) return data[0].generated_text;
+                return data.generated_text || 'No response from HuggingFace';
+            },
+            async openrouter_chat({ message }) {
+                const key = getKey('openrouter');
+                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'mistralai/mistral-7b-instant:free', messages: [{ role: 'user', content: message }] })
+                });
+                const data = await res.json();
+                return data.choices?.[0]?.message?.content || 'No response from OpenRouter';
+            }
+        };
+
+        const TOOLS_DESC = `You have access to these real-time tools. When you need live data (weather, news, location, definitions, currency, quotes, addresses, or extra AI power), respond with ONLY a JSON object like {"tool":"get_weather","params":{"city":"Miami"}} and nothing else. I will execute it and return the result for you to use in your final answer.
+
+Available tools (all free, some need no key):
+- get_weather({city}) → Current weather (OpenWeather). Use for any weather question.
+- get_forecast({lat, lon}) → Weather forecast (Open-Meteo, zero-key). Use for forecasts after getting location.
+- get_news({query}) → Top 3 news headlines (NewsAPI). Use for current events.
+- get_quote() → Daily inspirational quote (ZenQuotes, zero-key).
+- get_location() → Detect user's city from IP (ipapi.co, zero-key). Use when asked "where am I" or for local weather.
+- get_dictionary({word}) → Word definition (Free Dictionary, zero-key).
+- get_currency({base, target}) → Currency rates (Frankfurter, zero-key). Example: {"tool":"get_currency","params":{"base":"USD","target":"EUR"}}
+- search_address({query}) → Address lookup (Nominatim/OpenStreetMap, zero-key).
+- ovh_chat({message}) → Emergency AI fallback (OVHcloud, zero-key).
+- huggingface_chat({message}) → AI via HuggingFace Mistral 7B.
+- openrouter_chat({message}) → AI via OpenRouter Mistral 7B free tier.
+
+If you don't need a tool, just answer normally. If the user asks something requiring real-time info, YOU MUST use the tool first.`;
+
+        function extractToolCall(text) {
+            const jsonMatches = text.match(/\{[\s\S]*?\}/g);
+            if (!jsonMatches) return null;
+            for (const match of jsonMatches) {
+                try {
+                    const obj = JSON.parse(match);
+                    if (obj.tool && TOOLS[obj.tool]) {
+                        return { raw: match, call: obj };
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
+
+// ==================== CHAT ====================
         function openChat(index) {
             activeAgentIndex = index;
             const config = AGENTS[index];
@@ -1463,32 +1495,45 @@ If you don't need a tool, just answer normally. If the user asks something requi
             const history = chatHistory[key] || [];
             const recent = history.slice(-8);
 
-            let context = config.systemPrompt + '\n' + TOOLS_DESC + '\n\n';
+            let context = config.systemPrompt + '
+' + TOOLS_DESC + '
+
+';
 
             if (config.name === 'Clock') {
-                context += `CURRENT TIME: ${getTimeString()}\n`;
-                context += `TODAY IS: ${getDayName()}, ${getDateOnly()}\n`;
-                context += `USER TASKS: ${JSON.stringify(userTasks)}\n`;
-                context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.\n\n`;
+                context += `CURRENT TIME: ${getTimeString()}
+`;
+                context += `TODAY IS: ${getDayName()}, ${getDateOnly()}
+`;
+                context += `USER TASKS: ${JSON.stringify(userTasks)}
+`;
+                context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.
+
+`;
             }
 
-            recent.forEach(m => context += `${m.role}: ${m.text}\n`);
+            recent.forEach(m => context += `${m.role}: ${m.text}
+`);
             context += `user: ${userMessage}`;
 
             let response = await callLLM(context, config);
 
-            // Tool calling loop (max 3 rounds)
             for (let attempt = 0; attempt < 3; attempt++) {
                 const tool = extractToolCall(response);
                 if (!tool) break;
-
                 try {
                     const result = await TOOLS[tool.call.tool](tool.call.params || {});
                     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-                    context += `\n\n[TOOL RESULT - ${tool.call.tool}]: ${resultStr}\nBased on this data, answer the user. Do not output more tool calls unless absolutely necessary.`;
+                    context += `
+
+[TOOL RESULT - ${tool.call.tool}]: ${resultStr}
+Based on this data, answer the user. Do not output more tool calls unless absolutely necessary.`;
                     response = await callLLM(context, config);
                 } catch (e) {
-                    context += `\n\n[TOOL ERROR - ${tool.call.tool}]: ${e.message}\nAnswer without this tool's data.`;
+                    context += `
+
+[TOOL ERROR - ${tool.call.tool}]: ${e.message}
+Answer without this tool's data.`;
                     response = await callLLM(context, config);
                 }
             }
