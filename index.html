@@ -289,6 +289,20 @@
             width: 0%;
             transition: width 0.2s;
         }
+        #loader .skip-btn {
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid #333;
+            color: #666;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        #loader .skip-btn:hover {
+            border-color: #7c3aed;
+            color: #a855f7;
+        }
 
         #debug-coord {
             position: fixed;
@@ -408,9 +422,6 @@
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #1f1f30; border-radius: 3px; }
     </style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
 </head>
 <body>
 
@@ -418,6 +429,7 @@
         <div style="font-size:1.5rem; font-weight:700; margin-bottom:6px;">◆ ECHO</div>
         <div style="font-size:0.85rem; color:#666;" id="loaderText">Loading Office...</div>
         <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+        <button class="skip-btn" onclick="forceStart()">Skip Loading</button>
     </div>
 
     <div id="debug-coord">Click a desk to get coordinates</div>
@@ -479,6 +491,14 @@
     <div class="hint" id="hint">WASD to move • Mouse drag to look • Click agent to chat</div>
 
     <script>
+        // ==================== DEFAULT KEYS (MUST BE FIRST) ====================
+        const DEFAULT_KEYS = {
+            openweather: '001d2756fa2efebcca4893f59bec4380',
+            newsapi: '7f32a84636e54372922f84a12e512306',
+            openrouter: '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',
+            huggingface: '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'
+        };
+
         const MODEL_URL = 'office_room.glb';
         let PLACEMENT_MODE = false;
         let DESK_POSITIONS = [];
@@ -786,66 +806,11 @@
 
                 scene.add(officeModel);
 
-                const floorGeo = new THREE.PlaneGeometry(300, 300);
-                const floorMat = new THREE.MeshStandardMaterial({ 
-                    color: 0x151525, 
-                    roughness: 0.95,
-                    metalness: 0.05
-                });
-                const floor = new THREE.Mesh(floorGeo, floorMat);
-                floor.rotation.x = -Math.PI / 2;
-                floor.position.y = FLOOR_Y - 0.02;
-                floor.receiveShadow = true;
-                scene.add(floor);
-
-                const min = modelBounds.min;
-                const max = modelBounds.max;
-                const rangeX = max.x - min.x;
-                const rangeZ = max.z - min.z;
-
-                const padX = rangeX * 0.18;
-                const padZ = rangeZ * 0.18;
-                const usableX = rangeX - padX * 2;
-                const usableZ = rangeZ - padZ * 2;
-
-                DESK_POSITIONS = [];
-                const cols = 3;
-                const rows = 3;
-                for (let i = 0; i < 9; i++) {
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-                    const x = min.x + padX + (col / (cols - 1)) * usableX;
-                    const z = min.z + padZ + (row / (rows - 1)) * usableZ;
-                    DESK_POSITIONS.push({ x, y: FLOOR_Y, z });
-                }
-
-                console.log('Desk positions:', DESK_POSITIONS);
-
-                AGENTS.forEach((config, i) => {
-                    const robot = new Robot(i, config);
-                    robot.baseY = FLOOR_Y;
-                    agents.push(robot);
-                    scene.add(robot.mesh);
-
-                    if (DESK_POSITIONS[i]) {
-                        robot.mesh.position.set(
-                            DESK_POSITIONS[i].x,
-                            DESK_POSITIONS[i].y,
-                            DESK_POSITIONS[i].z
-                        );
-                    }
-                });
-
-                const camX = min.x + rangeX * 0.5;
-                const camZ = min.z + rangeZ * 0.65;
-                freecam.pos.set(camX, FLOOR_Y + 2.8, camZ);
-                freecam.yaw = Math.PI;
-                freecam.pitch = -0.2;
-                updateFreecam();
-
-                const loaderEl = document.getElementById('loader');
-                loaderEl.style.opacity = '0';
-                setTimeout(() => loaderEl.style.display = 'none', 500);
+                buildFloor();
+                computeDeskPositions();
+                spawnAgents();
+                positionCamera();
+                hideLoader();
 
             }, (xhr) => {
                 const pct = Math.round((xhr.loaded / xhr.total) * 100);
@@ -853,10 +818,17 @@
                 document.getElementById('progressBar').style.width = pct + '%';
             }, (error) => {
                 console.error('Error loading model:', error);
-                document.getElementById('loaderText').textContent = 'Failed to load office_room.glb';
-                document.getElementById('loaderText').style.color = '#ff4444';
-                document.getElementById('progressBar').style.background = '#ff4444';
+                document.getElementById('loaderText').textContent = 'GLB failed — using fallback office';
                 document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressBar').style.background = '#f59e0b';
+                
+                // Fallback procedural office
+                buildFallbackOffice();
+                buildFloor();
+                computeDeskPositions();
+                spawnAgents();
+                positionCamera();
+                hideLoader();
             });
 
             window.addEventListener('resize', onResize);
@@ -876,6 +848,171 @@
             setTimeout(() => document.getElementById('hint').style.opacity = '0', 10000);
 
             animate();
+        }
+
+        function buildFallbackOffice() {
+            // Create a simple room when GLB fails
+            const roomGroup = new THREE.Group();
+            
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(40, 40);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a28, roughness: 0.9 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            roomGroup.add(floor);
+            
+            // Walls
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.8 });
+            const wallHeight = 6;
+            const wallThick = 0.5;
+            
+            // Back wall
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(40, wallHeight, wallThick), wallMat);
+            backWall.position.set(0, wallHeight/2, -20);
+            roomGroup.add(backWall);
+            
+            // Left wall
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallHeight, 40), wallMat);
+            leftWall.position.set(-20, wallHeight/2, 0);
+            roomGroup.add(leftWall);
+            
+            // Right wall
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallHeight, 40), wallMat);
+            rightWall.position.set(20, wallHeight/2, 0);
+            roomGroup.add(rightWall);
+            
+            // Front wall (partial)
+            const frontWall = new THREE.Mesh(new THREE.BoxGeometry(40, wallHeight, wallThick), wallMat);
+            frontWall.position.set(0, wallHeight/2, 20);
+            roomGroup.add(frontWall);
+            
+            // Desks
+            const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.6 });
+            const deskPositions = [
+                {x: -8, z: -8}, {x: 0, z: -8}, {x: 8, z: -8},
+                {x: -8, z: 0}, {x: 0, z: 0}, {x: 8, z: 0},
+                {x: -8, z: 8}, {x: 0, z: 8}, {x: 8, z: 8}
+            ];
+            
+            deskPositions.forEach(pos => {
+                const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.5), deskMat);
+                desk.position.set(pos.x, 0.5, pos.z);
+                desk.castShadow = true;
+                roomGroup.add(desk);
+                
+                // Chair
+                const chair = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), deskMat);
+                chair.position.set(pos.x, 0.4, pos.z + 1.5);
+                roomGroup.add(chair);
+            });
+            
+            scene.add(roomGroup);
+            
+            modelBounds = new THREE.Box3().setFromObject(roomGroup);
+            FLOOR_Y = 0;
+        }
+
+        function buildFloor() {
+            const floorGeo = new THREE.PlaneGeometry(300, 300);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0x151525, 
+                roughness: 0.95,
+                metalness: 0.05
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = FLOOR_Y - 0.02;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+
+        function computeDeskPositions() {
+            if (!modelBounds) {
+                // Fallback grid
+                DESK_POSITIONS = [];
+                for (let i = 0; i < 9; i++) {
+                    const col = i % 3;
+                    const row = Math.floor(i / 3);
+                    DESK_POSITIONS.push({
+                        x: -8 + col * 8,
+                        y: FLOOR_Y,
+                        z: -8 + row * 8
+                    });
+                }
+                return;
+            }
+
+            const min = modelBounds.min;
+            const max = modelBounds.max;
+            const rangeX = max.x - min.x;
+            const rangeZ = max.z - min.z;
+
+            const padX = rangeX * 0.18;
+            const padZ = rangeZ * 0.18;
+            const usableX = rangeX - padX * 2;
+            const usableZ = rangeZ - padZ * 2;
+
+            DESK_POSITIONS = [];
+            const cols = 3;
+            const rows = 3;
+            for (let i = 0; i < 9; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = min.x + padX + (col / (cols - 1)) * usableX;
+                const z = min.z + padZ + (row / (rows - 1)) * usableZ;
+                DESK_POSITIONS.push({ x, y: FLOOR_Y, z });
+            }
+
+            console.log('Desk positions:', DESK_POSITIONS);
+        }
+
+        function spawnAgents() {
+            AGENTS.forEach((config, i) => {
+                const robot = new Robot(i, config);
+                robot.baseY = FLOOR_Y;
+                agents.push(robot);
+                scene.add(robot.mesh);
+
+                if (DESK_POSITIONS[i]) {
+                    robot.mesh.position.set(
+                        DESK_POSITIONS[i].x,
+                        DESK_POSITIONS[i].y,
+                        DESK_POSITIONS[i].z
+                    );
+                }
+            });
+        }
+
+        function positionCamera() {
+            if (!modelBounds) {
+                freecam.pos.set(0, 5, 15);
+                freecam.yaw = Math.PI;
+                freecam.pitch = -0.2;
+                updateFreecam();
+                return;
+            }
+
+            const min = modelBounds.min;
+            const max = modelBounds.max;
+            const rangeX = max.x - min.x;
+            const rangeZ = max.z - min.z;
+            const camX = min.x + rangeX * 0.5;
+            const camZ = min.z + rangeZ * 0.65;
+            freecam.pos.set(camX, FLOOR_Y + 2.8, camZ);
+            freecam.yaw = Math.PI;
+            freecam.pitch = -0.2;
+            updateFreecam();
+        }
+
+        function hideLoader() {
+            const loaderEl = document.getElementById('loader');
+            loaderEl.style.opacity = '0';
+            setTimeout(() => loaderEl.style.display = 'none', 500);
+        }
+
+        function forceStart() {
+            hideLoader();
         }
 
         function updateFreecam() {
@@ -1306,14 +1443,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-                // ==================== API TOOLS ====================
-        const DEFAULT_KEYS = {
-            openweather: '001d2756fa2efebcca4893f59bec4380',
-            newsapi: '7f32a84636e54372922f84a12e512306',
-            openrouter: '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',
-            huggingface: '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'
-        };
-
+        // ==================== API TOOLS ====================
         function getKey(name) {
             return localStorage.getItem(name) || DEFAULT_KEYS[name] || '';
         }
@@ -1429,7 +1559,7 @@ If you don't need a tool, just answer normally. If the user asks something requi
             return null;
         }
 
-// ==================== CHAT ====================
+        // ==================== CHAT ====================
         function openChat(index) {
             activeAgentIndex = index;
             const config = AGENTS[index];
@@ -1495,25 +1625,16 @@ If you don't need a tool, just answer normally. If the user asks something requi
             const history = chatHistory[key] || [];
             const recent = history.slice(-8);
 
-            let context = config.systemPrompt + '
-' + TOOLS_DESC + '
-
-';
+            let context = config.systemPrompt + '\n' + TOOLS_DESC + '\n\n';
 
             if (config.name === 'Clock') {
-                context += `CURRENT TIME: ${getTimeString()}
-`;
-                context += `TODAY IS: ${getDayName()}, ${getDateOnly()}
-`;
-                context += `USER TASKS: ${JSON.stringify(userTasks)}
-`;
-                context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.
-
-`;
+                context += `CURRENT TIME: ${getTimeString()}\n`;
+                context += `TODAY IS: ${getDayName()}, ${getDateOnly()}\n`;
+                context += `USER TASKS: ${JSON.stringify(userTasks)}\n`;
+                context += `INSTRUCTIONS: When the user asks to add, remove, or change a task, respond with a JSON block like {"action":"add","task":"Task Name","time":"When","color":"#hex"} or {"action":"remove","index":0} or {"action":"clear"}. Otherwise just chat normally.\n\n`;
             }
 
-            recent.forEach(m => context += `${m.role}: ${m.text}
-`);
+            recent.forEach(m => context += `${m.role}: ${m.text}\n`);
             context += `user: ${userMessage}`;
 
             let response = await callLLM(context, config);
@@ -1524,16 +1645,10 @@ If you don't need a tool, just answer normally. If the user asks something requi
                 try {
                     const result = await TOOLS[tool.call.tool](tool.call.params || {});
                     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-                    context += `
-
-[TOOL RESULT - ${tool.call.tool}]: ${resultStr}
-Based on this data, answer the user. Do not output more tool calls unless absolutely necessary.`;
+                    context += `\n\n[TOOL RESULT - ${tool.call.tool}]: ${resultStr}\nBased on this data, answer the user. Do not output more tool calls unless absolutely necessary.`;
                     response = await callLLM(context, config);
                 } catch (e) {
-                    context += `
-
-[TOOL ERROR - ${tool.call.tool}]: ${e.message}
-Answer without this tool's data.`;
+                    context += `\n\n[TOOL ERROR - ${tool.call.tool}]: ${e.message}\nAnswer without this tool's data.`;
                     response = await callLLM(context, config);
                 }
             }
@@ -1551,7 +1666,9 @@ Answer without this tool's data.`;
             } else {
                 return await callGroq(context, config.systemPrompt);
             }
-        }async function callGemini(prompt) {
+        }
+
+        async function callGemini(prompt) {
             const key = localStorage.getItem('geminiKey');
             if (!key) return 'Error: No Gemini key saved. Paste it in the top bar and hit Save.';
             try {
