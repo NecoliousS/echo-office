@@ -837,6 +837,111 @@ If you don't need a tool, just answer normally. If the user asks something requi
             return null;
         }
 
+        function buildProceduralOffice() {
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(40, 40);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9, metalness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Walls (simple box room)
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.8 });
+            const wallH = 4;
+            const wallThick = 0.3;
+            const roomW = 18;
+            const roomD = 14;
+
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomW, wallH, wallThick), wallMat);
+            backWall.position.set(0, wallH/2, -roomD/2);
+            backWall.castShadow = true;
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallH, roomD), wallMat);
+            leftWall.position.set(-roomW/2, wallH/2, 0);
+            leftWall.castShadow = true;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallH, roomD), wallMat);
+            rightWall.position.set(roomW/2, wallH/2, 0);
+            rightWall.castShadow = true;
+            scene.add(rightWall);
+
+            const frontWall = new THREE.Mesh(new THREE.BoxGeometry(roomW, wallH, wallThick), wallMat);
+            frontWall.position.set(0, wallH/2, roomD/2);
+            frontWall.castShadow = true;
+            scene.add(frontWall);
+
+            // Ceiling
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), new THREE.MeshStandardMaterial({ color: 0x151525, roughness: 1 }));
+            ceil.rotation.x = Math.PI / 2;
+            ceil.position.y = wallH;
+            scene.add(ceil);
+
+            // Desks (simple boxes)
+            const deskMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.6 });
+            const deskPositions = [];
+            const cols = 3, rows = 3;
+            const spacingX = 5, spacingZ = 4;
+            for (let i = 0; i < 9; i++) {
+                const col = i % cols - 1;
+                const row = Math.floor(i / cols) - 1;
+                const x = col * spacingX;
+                const z = row * spacingZ;
+                deskPositions.push({ x, y: 0, z });
+
+                const desk = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 1.2), deskMat);
+                desk.position.set(x, 0.4, z);
+                desk.castShadow = true;
+                desk.receiveShadow = true;
+                scene.add(desk);
+
+                // Chair
+                const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x1a1a28 }));
+                chair.position.set(x, 0.3, z + 1);
+                scene.add(chair);
+
+                // Monitor
+                const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.05), new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111122 }));
+                monitor.position.set(x, 1.1, z - 0.4);
+                scene.add(monitor);
+            }
+
+            FLOOR_Y = 0;
+            modelBounds = new THREE.Box3(
+                new THREE.Vector3(-roomW/2 + 1, 0, -roomD/2 + 1),
+                new THREE.Vector3(roomW/2 - 1, wallH, roomD/2 - 1)
+            );
+            DESK_POSITIONS = deskPositions;
+
+            // Spawn agents
+            AGENTS.forEach((config, i) => {
+                const robot = new Robot(i, config);
+                robot.baseY = FLOOR_Y;
+                agents.push(robot);
+                scene.add(robot.mesh);
+                if (DESK_POSITIONS[i]) {
+                    robot.mesh.position.set(DESK_POSITIONS[i].x, DESK_POSITIONS[i].y, DESK_POSITIONS[i].z);
+                }
+            });
+
+            // Camera
+            freecam.pos.set(0, 3, 10);
+            freecam.yaw = Math.PI;
+            freecam.pitch = -0.25;
+            updateFreecam();
+
+            hideLoader();
+        }
+
+        function hideLoader() {
+            const loaderEl = document.getElementById('loader');
+            loaderEl.style.opacity = '0';
+            setTimeout(() => loaderEl.style.display = 'none', 500);
+        }
+
         // ==================== THREE.JS ====================
         function init() {
             const container = document.getElementById('canvas-container');
@@ -871,7 +976,13 @@ If you don't need a tool, just answer normally. If the user asks something requi
             const loader = new THREE.GLTFLoader();
             console.log('Loading:', MODEL_URL);
 
+            let loadTimeout = setTimeout(() => {
+                console.warn('GLB load timeout — building procedural office');
+                buildProceduralOffice();
+            }, 10000);
+
             loader.load(MODEL_URL, (gltf) => {
+                clearTimeout(loadTimeout);
                 officeModel = gltf.scene;
 
                 const box = new THREE.Box3().setFromObject(officeModel);
@@ -887,7 +998,6 @@ If you don't need a tool, just answer normally. If the user asks something requi
 
                 officeModel.scale.setScalar(scale);
                 officeModel.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-
                 officeModel.updateMatrixWorld(true);
 
                 filterBuildings(officeModel);
@@ -903,20 +1013,13 @@ If you don't need a tool, just answer normally. If the user asks something requi
                 });
 
                 console.log('Visible meshes after filter:', visibleCount);
-                console.log('Visible bounds min:', modelBounds.min.x.toFixed(2), modelBounds.min.y.toFixed(2), modelBounds.min.z.toFixed(2));
-                console.log('Visible bounds max:', modelBounds.max.x.toFixed(2), modelBounds.max.y.toFixed(2), modelBounds.max.z.toFixed(2));
-
                 FLOOR_Y = modelBounds.min.y;
                 console.log('FLOOR_Y:', FLOOR_Y);
 
                 scene.add(officeModel);
 
                 const floorGeo = new THREE.PlaneGeometry(300, 300);
-                const floorMat = new THREE.MeshStandardMaterial({ 
-                    color: 0x151525, 
-                    roughness: 0.95,
-                    metalness: 0.05
-                });
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x151525, roughness: 0.95, metalness: 0.05 });
                 const floor = new THREE.Mesh(floorGeo, floorMat);
                 floor.rotation.x = -Math.PI / 2;
                 floor.position.y = FLOOR_Y - 0.02;
@@ -927,7 +1030,6 @@ If you don't need a tool, just answer normally. If the user asks something requi
                 const max = modelBounds.max;
                 const rangeX = max.x - min.x;
                 const rangeZ = max.z - min.z;
-
                 const padX = rangeX * 0.18;
                 const padZ = rangeZ * 0.18;
                 const usableX = rangeX - padX * 2;
@@ -951,13 +1053,8 @@ If you don't need a tool, just answer normally. If the user asks something requi
                     robot.baseY = FLOOR_Y;
                     agents.push(robot);
                     scene.add(robot.mesh);
-
                     if (DESK_POSITIONS[i]) {
-                        robot.mesh.position.set(
-                            DESK_POSITIONS[i].x,
-                            DESK_POSITIONS[i].y,
-                            DESK_POSITIONS[i].z
-                        );
+                        robot.mesh.position.set(DESK_POSITIONS[i].x, DESK_POSITIONS[i].y, DESK_POSITIONS[i].z);
                     }
                 });
 
@@ -968,20 +1065,18 @@ If you don't need a tool, just answer normally. If the user asks something requi
                 freecam.pitch = -0.2;
                 updateFreecam();
 
-                const loaderEl = document.getElementById('loader');
-                loaderEl.style.opacity = '0';
-                setTimeout(() => loaderEl.style.display = 'none', 500);
+                hideLoader();
 
             }, (xhr) => {
                 const pct = Math.round((xhr.loaded / xhr.total) * 100);
                 document.getElementById('loaderText').textContent = `Loading Office... ${pct}%`;
                 document.getElementById('progressBar').style.width = pct + '%';
             }, (error) => {
+                clearTimeout(loadTimeout);
                 console.error('Error loading model:', error);
-                document.getElementById('loaderText').textContent = 'Failed to load office_room.glb';
-                document.getElementById('loaderText').style.color = '#ff4444';
-                document.getElementById('progressBar').style.background = '#ff4444';
+                document.getElementById('loaderText').textContent = 'GLB failed — building procedural office...';
                 document.getElementById('progressBar').style.width = '100%';
+                buildProceduralOffice();
             });
 
             window.addEventListener('resize', onResize);
